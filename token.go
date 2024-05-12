@@ -31,10 +31,10 @@ func (t *Token) generate(keyId, issuer, bundleId string) (string, error) {
 	now := time.Now()
 	t.iat = now
 	t.exp = now.Add(time.Hour)
-	token.Claims = &jwt.MapClaims{
+	token.Claims = jwt.MapClaims{
 		"iss": issuer,
-		"iat": t.iat,
-		"exp": t.exp,
+		"iat": t.iat.Unix(),
+		"exp": t.exp.Unix(),
 		"aud": "appstoreconnect-v1",
 		"bid": bundleId,
 	}
