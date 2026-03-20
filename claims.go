@@ -245,7 +245,8 @@ func DecodeCertificate(data []byte) (*x509.Certificate, error) {
 	return cert, nil
 }
 
-func parseRSAPrivateKey(privateKeyPem string) (*ecdsa.PrivateKey, error) {
+// ParsePrivateKey parses a PEM-encoded PKCS8 private key into an ECDSA private key.
+func ParsePrivateKey(privateKeyPem string) (*ecdsa.PrivateKey, error) {
 	if !strings.HasPrefix(privateKeyPem, "-") {
 		var b strings.Builder
 		b.WriteString("-----BEGIN PRIVATE KEY-----")
@@ -256,6 +257,9 @@ func parseRSAPrivateKey(privateKeyPem string) (*ecdsa.PrivateKey, error) {
 		privateKeyPem = b.String()
 	}
 	block, _ := pem.Decode([]byte(privateKeyPem))
+	if block == nil {
+		return nil, errors.New("failed to decode PEM block")
+	}
 	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
 		return nil, err

@@ -10,7 +10,8 @@ import (
 )
 
 const (
-	transactionInfoUrl = "https://api.storekit.itunes.apple.com/inApps/v1/transactions/%s"
+	transactionInfoPath    = "/inApps/v1/transactions/%s"
+	transactionHistoryPath = "/inApps/v2/history/%s"
 )
 
 type TransactionType string
@@ -75,9 +76,56 @@ type JWSTransactionDecodedPayload struct {
 	WebOrderLineItemId          string          `json:"webOrderLineItemId,omitempty"`
 }
 
+// TransactionHistoryResponse https://developer.apple.com/documentation/appstoreserverapi/historyresponse
+type TransactionHistoryResponse struct {
+	AppAppleId         int64    `json:"appAppleId"`
+	BundleId           string   `json:"bundleId"`
+	Environment        string   `json:"environment"`
+	HasMore            bool     `json:"hasMore"`
+	Revision           string   `json:"revision"`
+	SignedTransactions []string `json:"signedTransactions"`
+}
+
+func (c *Client) GetTransactionHistory(ctx context.Context, transactionId string, revision string) (*TransactionHistoryResponse, error) {
+	url := c.baseURL + fmt.Sprintf(transactionHistoryPath, transactionId)
+	if revision != "" {
+		url += "?revision=" + revision
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", c.token.Bearer())
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	switch resp.StatusCode {
+	case http.StatusOK:
+		var result TransactionHistoryResponse
+		if err = json.Unmarshal(body, &result); err != nil {
+			return nil, err
+		}
+		return &result, nil
+	case http.StatusUnauthorized:
+		return nil, fmt.Errorf("%s", body)
+	default:
+		errRsp := &ErrorResponse{}
+		if err = json.Unmarshal(body, errRsp); err != nil {
+			return nil, err
+		}
+		return nil, errRsp
+	}
+}
+
 func (c *Client) GetTransactionInfo(ctx context.Context, transactionId string) (*JWSTransactionDecodedPayload, error) {
 	bearer := c.token.Bearer()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf(transactionInfoUrl, transactionId), nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+fmt.Sprintf(transactionInfoPath, transactionId), nil)
 	req.Header.Set("Authorization", bearer)
 	resp, _ := c.client.Do(req)
 	defer resp.Body.Close()
