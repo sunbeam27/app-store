@@ -131,8 +131,10 @@ fmt.Println(tokenResp.AccessToken, tokenResp.IDToken)
 
 ### Verify ID Token
 
+Generate and retain a nonce for each authorization request, then pass the expected nonce when verifying its ID token. The nonce must match the value sent to Apple (including any hashing required by your platform). `VerifyIDToken` validates the signature and claims only; use `VerifyIDTokenWithNonce` to bind the token to the login request.
+
 ```go
-claims, err := authClient.VerifyIDToken(idToken)
+claims, err := authClient.VerifyIDTokenWithNonce(idToken, expectedNonce)
 if err != nil {
     log.Fatal(err)
 }
@@ -208,3 +210,4 @@ if err != nil {
 - [App Store Server API](https://developer.apple.com/documentation/appstoreserverapi)
 - [Sign in with Apple](https://developer.apple.com/documentation/sign_in_with_apple)
 - [App Store Server Notifications V2](https://developer.apple.com/documentation/appstoreservernotifications)
+

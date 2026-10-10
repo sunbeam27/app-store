@@ -40,10 +40,19 @@ func (o *OrderLookupResponse) DecodeTransaction() error {
 }
 
 func (c *Client) LookupOrder(ctx context.Context, orderId string) (*OrderLookupResponse, error) {
-	bearer := c.token.Bearer()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+fmt.Sprintf(orderPath, orderId), nil)
+	bearer, err := c.token.bearer()
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+fmt.Sprintf(orderPath, orderId), nil)
+	if err != nil {
+		return nil, err
+	}
 	req.Header.Set("Authorization", bearer)
-	resp, _ := c.client.Do(req)
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
 	defer resp.Body.Close()
 	bytes, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -63,5 +72,5 @@ func (c *Client) LookupOrder(ctx context.Context, orderId string) (*OrderLookupR
 		return nil, errRsp
 	}
 
-	return order, nil
+	return order, err
 }

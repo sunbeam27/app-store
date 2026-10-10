@@ -17,11 +17,11 @@ import (
 )
 
 const (
-	AppleAuthURL     = "https://appleid.apple.com/auth/authorize"
-	AppleTokenURL    = "https://appleid.apple.com/auth/token"
-	AppleKeysURL     = "https://appleid.apple.com/auth/keys"
-	AppleRevokeURL   = "https://appleid.apple.com/auth/revoke"
-	AppleIssuer      = "https://appleid.apple.com"
+	AppleAuthURL   = "https://appleid.apple.com/auth/authorize"
+	AppleTokenURL  = "https://appleid.apple.com/auth/token"
+	AppleKeysURL   = "https://appleid.apple.com/auth/keys"
+	AppleRevokeURL = "https://appleid.apple.com/auth/revoke"
+	AppleIssuer    = "https://appleid.apple.com"
 )
 
 // AppleKey represents a single key from Apple's JWKS endpoint.
@@ -42,16 +42,16 @@ type AppleKeysResponse struct {
 // AppleIDTokenClaims represents the claims in an Apple ID token.
 type AppleIDTokenClaims struct {
 	jwt.RegisteredClaims
-	Email             string `json:"email,omitempty"`
-	EmailVerified     any    `json:"email_verified,omitempty"`
-	IsPrivateEmail    any    `json:"is_private_email,omitempty"`
-	RealUserStatus    int    `json:"real_user_status,omitempty"`
-	TransferSub       string `json:"transfer_sub,omitempty"`
-	NonceSupported    bool   `json:"nonce_supported,omitempty"`
-	AuthTime          int64  `json:"auth_time,omitempty"`
-	Nonce             string `json:"nonce,omitempty"`
-	CHash             string `json:"c_hash,omitempty"`
-	AtHash            string `json:"at_hash,omitempty"`
+	Email          string `json:"email,omitempty"`
+	EmailVerified  any    `json:"email_verified,omitempty"`
+	IsPrivateEmail any    `json:"is_private_email,omitempty"`
+	RealUserStatus int    `json:"real_user_status,omitempty"`
+	TransferSub    string `json:"transfer_sub,omitempty"`
+	NonceSupported bool   `json:"nonce_supported,omitempty"`
+	AuthTime       int64  `json:"auth_time,omitempty"`
+	Nonce          string `json:"nonce,omitempty"`
+	CHash          string `json:"c_hash,omitempty"`
+	AtHash         string `json:"at_hash,omitempty"`
 }
 
 // IsEmailVerified returns whether the email is verified.
@@ -232,6 +232,9 @@ func (a *AppleAuthClient) VerifyIDToken(idToken string) (*AppleIDTokenClaims, er
 // VerifyAppleIDToken verifies an Apple ID token using Apple's public keys.
 // clientID is the expected audience (your Services ID or App Bundle ID).
 func VerifyAppleIDToken(httpClient *http.Client, clientID, idToken string) (*AppleIDTokenClaims, error) {
+	if clientID == "" {
+		return nil, errors.New("expected client ID is required")
+	}
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
@@ -260,6 +263,9 @@ func VerifyAppleIDToken(httpClient *http.Client, clientID, idToken string) (*App
 	if err = json.Unmarshal(headerBytes, &header); err != nil {
 		return nil, fmt.Errorf("parse header: %w", err)
 	}
+	if header.Alg != "RS256" || header.Kid == "" {
+		return nil, errors.New("invalid token algorithm or key ID")
+	}
 
 	// Find matching key
 	var matchedKey *AppleKey
@@ -272,6 +278,9 @@ func VerifyAppleIDToken(httpClient *http.Client, clientID, idToken string) (*App
 	if matchedKey == nil {
 		return nil, errors.New("no matching key found")
 	}
+	if matchedKey.Kty != "RSA" || matchedKey.Use != "sig" || matchedKey.Alg != "RS256" {
+		return nil, errors.New("invalid Apple signing key")
+	}
 
 	// Build RSA public key
 	pubKey, err := buildRSAPublicKey(matchedKey)
@@ -283,12 +292,15 @@ func VerifyAppleIDToken(httpClient *http.Client, clientID, idToken string) (*App
 	claims := &AppleIDTokenClaims{}
 	_, err = jwt.ParseWithClaims(idToken, claims, func(token *jwt.Token) (interface{}, error) {
 		return pubKey, nil
-	}, jwt.WithIssuer(AppleIssuer), jwt.WithAudience(clientID))
+	}, jwt.WithIssuer(AppleIssuer), jwt.WithAudience(clientID), jwt.WithValidMethods([]string{"RS256"}), jwt.WithExpirationRequired())
 
 	if err != nil {
 		return nil, fmt.Errorf("verify token: %w", err)
 	}
 
+	if claims.Subject == "" {
+		return nil, errors.New("missing token subject")
+	}
 	return claims, nil
 }
 
@@ -304,6 +316,9 @@ func fetchApplePublicKeys(client *http.Client) (*AppleKeysResponse, error) {
 		return nil, err
 	}
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("apple keys error (status %d): %s", resp.StatusCode, body)
+	}
 	var keys AppleKeysResponse
 	if err = json.Unmarshal(body, &keys); err != nil {
 		return nil, err
@@ -328,4 +343,19 @@ func buildRSAPublicKey(key *AppleKey) (*rsa.PublicKey, error) {
 		N: n,
 		E: int(e.Int64()),
 	}, nil
+}
+
+// VerifyIDTokenWithNonce also binds the token to the authorization request.
+func (a *AppleAuthClient) VerifyIDTokenWithNonce(idToken, expectedNonce string) (*AppleIDTokenClaims, error) {
+	if expectedNonce == "" {
+		return nil, errors.New("expected nonce is required")
+	}
+	claims, err := a.VerifyIDToken(idToken)
+	if err != nil {
+		return nil, err
+	}
+	if claims.Nonce != expectedNonce {
+		return nil, errors.New("nonce mismatch")
+	}
+	return claims, nil
 }

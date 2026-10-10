@@ -59,12 +59,12 @@ type SignedPayload struct {
 // NotificationV2Payload https://developer.apple.com/documentation/appstoreservernotifications/responsebodyv2decodedpayload
 type NotificationV2Payload struct {
 	jwt.RegisteredClaims `json:"-"`
-	NotificationType     NotificationType    `json:"notificationType"`
-	Subtype              NotificationSubtype `json:"subtype,omitempty"`
-	NotificationUUID     string              `json:"notificationUUID"`
-	Data                 *NotificationData   `json:"data,omitempty"`
-	Version              string              `json:"version"`
-	SignedDate           int64               `json:"signedDate"`
+	NotificationType     NotificationType     `json:"notificationType"`
+	Subtype              NotificationSubtype  `json:"subtype,omitempty"`
+	NotificationUUID     string               `json:"notificationUUID"`
+	Data                 *NotificationData    `json:"data,omitempty"`
+	Version              string               `json:"version"`
+	SignedDate           int64                `json:"signedDate"`
 	Summary              *NotificationSummary `json:"summary,omitempty"`
 }
 

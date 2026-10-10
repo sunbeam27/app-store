@@ -19,7 +19,6 @@ func newTestClient(t *testing.T, handler http.HandlerFunc) *Client {
 	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	token := NewToken("kid", "issuer", "bundle", key)
 	// Pre-generate token
-	token.token, _ = token.generate(token.kid, token.issuer, token.bundle)
 
 	client, err := NewClient(token, WithHttpClient(server.Client()))
 	if err != nil {
@@ -111,7 +110,7 @@ func TestGetTransactionInfo_Success(t *testing.T) {
 	_, err := client.GetTransactionInfo(context.Background(), "test-tx-id")
 	// This will error because we can't create a valid signed JWT for testing
 	if err == nil {
-		t.Log("expected error due to invalid JWT")
+		t.Fatal("expected error due to invalid JWT")
 	}
 }
 

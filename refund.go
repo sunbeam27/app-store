@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 )
 
 const (
@@ -21,15 +22,19 @@ type RefundHistoryResponse struct {
 
 // GetRefundHistory https://developer.apple.com/documentation/appstoreserverapi/get_refund_history
 func (c *Client) GetRefundHistory(ctx context.Context, transactionId string, revision string) (*RefundHistoryResponse, error) {
-	url := c.baseURL + fmt.Sprintf(refundHistoryPath, transactionId)
+	requestURL := c.baseURL + fmt.Sprintf(refundHistoryPath, transactionId)
 	if revision != "" {
-		url += "?revision=" + revision
+		requestURL += "?" + url.Values{"revision": {revision}}.Encode()
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Authorization", c.token.Bearer())
+	bearer, err := c.token.bearer()
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", bearer)
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, err

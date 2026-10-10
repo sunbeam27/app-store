@@ -162,13 +162,23 @@ type Header struct {
 }
 
 func DecodeClaims(payload string, claims jwt.Claims) error {
-	headerBytes, err := base64.RawStdEncoding.DecodeString(strings.Split(payload, ".")[0])
+	parts := strings.Split(payload, ".")
+	if len(parts) != 3 {
+		return errors.New("invalid token format")
+	}
+	headerBytes, err := base64.RawURLEncoding.DecodeString(parts[0])
 	if err != nil {
 		return err
 	}
 	var header *Header
 	if err = json.Unmarshal(headerBytes, &header); err != nil {
 		return err
+	}
+	if header == nil || len(header.X5C) != 3 {
+		return errors.New("invalid x5c certificate chain")
+	}
+	if header.Alg != "ES256" {
+		return errors.New("invalid signing algorithm")
 	}
 	root, err := DecodeCertificate([]byte(header.X5C[2]))
 	if err != nil {
@@ -196,7 +206,7 @@ func DecodeClaims(payload string, claims jwt.Claims) error {
 		default:
 			return nil, errors.New("key is not a valid *ecdsa.PublicKey")
 		}
-	}); err != nil {
+	}, jwt.WithValidMethods([]string{"ES256"})); err != nil {
 		return err
 	}
 	return nil
@@ -268,5 +278,5 @@ func ParsePrivateKey(privateKeyPem string) (*ecdsa.PrivateKey, error) {
 	if ok {
 		return privateKey, nil
 	}
-	return nil, errors.New("not a rsa.PrivateKey")
+	return nil, errors.New("not an ECDSA private key")
 }

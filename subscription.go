@@ -17,11 +17,11 @@ const (
 type SubscriptionStatus int32
 
 const (
-	SubscriptionStatusActive            SubscriptionStatus = 1
-	SubscriptionStatusExpired           SubscriptionStatus = 2
+	SubscriptionStatusActive             SubscriptionStatus = 1
+	SubscriptionStatusExpired            SubscriptionStatus = 2
 	SubscriptionStatusBillingRetryPeriod SubscriptionStatus = 3
 	SubscriptionStatusBillingGracePeriod SubscriptionStatus = 4
-	SubscriptionStatusRevoked           SubscriptionStatus = 5
+	SubscriptionStatusRevoked            SubscriptionStatus = 5
 )
 
 type AutoRenewStatus int32
@@ -51,8 +51,8 @@ type StatusResponse struct {
 
 // SubscriptionGroupIdentity represents a subscription group.
 type SubscriptionGroupIdentity struct {
-	SubscriptionGroupIdentifier string                   `json:"subscriptionGroupIdentifier"`
-	LastTransactions            []LastTransactionsItem    `json:"lastTransactions"`
+	SubscriptionGroupIdentifier string                 `json:"subscriptionGroupIdentifier"`
+	LastTransactions            []LastTransactionsItem `json:"lastTransactions"`
 }
 
 // LastTransactionsItem represents the latest transaction for a subscription.
@@ -65,20 +65,20 @@ type LastTransactionsItem struct {
 
 // JWSRenewalInfoDecodedPayload https://developer.apple.com/documentation/appstoreserverapi/jwsrenewalinfodecodedpayload
 type JWSRenewalInfoDecodedPayload struct {
-	jwt.RegisteredClaims           `json:"-"`
-	AutoRenewProductId             string           `json:"autoRenewProductId,omitempty"`
-	AutoRenewStatus                AutoRenewStatus  `json:"autoRenewStatus,omitempty"`
-	Environment                    Environment      `json:"environment,omitempty"`
-	ExpirationIntent               ExpirationIntent `json:"expirationIntent,omitempty"`
-	GracePeriodExpiresDate         int64            `json:"gracePeriodExpiresDate,omitempty"`
-	IsInBillingRetryPeriod         bool             `json:"isInBillingRetryPeriod,omitempty"`
-	OfferIdentifier                string           `json:"offerIdentifier,omitempty"`
-	OfferType                      OfferType        `json:"offerType,omitempty"`
-	OriginalTransactionId          string           `json:"originalTransactionId,omitempty"`
-	PriceIncreaseStatus            int32            `json:"priceIncreaseStatus,omitempty"`
-	ProductId                      string           `json:"productId,omitempty"`
-	RecentSubscriptionStartDate    int64            `json:"recentSubscriptionStartDate,omitempty"`
-	SignedDate                     int64            `json:"signedDate,omitempty"`
+	jwt.RegisteredClaims        `json:"-"`
+	AutoRenewProductId          string           `json:"autoRenewProductId,omitempty"`
+	AutoRenewStatus             AutoRenewStatus  `json:"autoRenewStatus,omitempty"`
+	Environment                 Environment      `json:"environment,omitempty"`
+	ExpirationIntent            ExpirationIntent `json:"expirationIntent,omitempty"`
+	GracePeriodExpiresDate      int64            `json:"gracePeriodExpiresDate,omitempty"`
+	IsInBillingRetryPeriod      bool             `json:"isInBillingRetryPeriod,omitempty"`
+	OfferIdentifier             string           `json:"offerIdentifier,omitempty"`
+	OfferType                   OfferType        `json:"offerType,omitempty"`
+	OriginalTransactionId       string           `json:"originalTransactionId,omitempty"`
+	PriceIncreaseStatus         int32            `json:"priceIncreaseStatus,omitempty"`
+	ProductId                   string           `json:"productId,omitempty"`
+	RecentSubscriptionStartDate int64            `json:"recentSubscriptionStartDate,omitempty"`
+	SignedDate                  int64            `json:"signedDate,omitempty"`
 }
 
 // GetAllSubscriptionStatuses https://developer.apple.com/documentation/appstoreserverapi/get_all_subscription_statuses
@@ -88,7 +88,11 @@ func (c *Client) GetAllSubscriptionStatuses(ctx context.Context, transactionId s
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Authorization", c.token.Bearer())
+	bearer, err := c.token.bearer()
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", bearer)
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, err

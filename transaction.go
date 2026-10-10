@@ -7,6 +7,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"io"
 	"net/http"
+	"net/url"
 )
 
 const (
@@ -87,15 +88,19 @@ type TransactionHistoryResponse struct {
 }
 
 func (c *Client) GetTransactionHistory(ctx context.Context, transactionId string, revision string) (*TransactionHistoryResponse, error) {
-	url := c.baseURL + fmt.Sprintf(transactionHistoryPath, transactionId)
+	requestURL := c.baseURL + fmt.Sprintf(transactionHistoryPath, transactionId)
 	if revision != "" {
-		url += "?revision=" + revision
+		requestURL += "?" + url.Values{"revision": {revision}}.Encode()
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Authorization", c.token.Bearer())
+	bearer, err := c.token.bearer()
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", bearer)
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, err
@@ -124,10 +129,19 @@ func (c *Client) GetTransactionHistory(ctx context.Context, transactionId string
 }
 
 func (c *Client) GetTransactionInfo(ctx context.Context, transactionId string) (*JWSTransactionDecodedPayload, error) {
-	bearer := c.token.Bearer()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+fmt.Sprintf(transactionInfoPath, transactionId), nil)
+	bearer, err := c.token.bearer()
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+fmt.Sprintf(transactionInfoPath, transactionId), nil)
+	if err != nil {
+		return nil, err
+	}
 	req.Header.Set("Authorization", bearer)
-	resp, _ := c.client.Do(req)
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
 	defer resp.Body.Close()
 	jwtTransaction := struct {
 		Transaction string `json:"signedTransactionInfo"`
