@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	ProductionBaseURL = "https://api.storekit.itunes.apple.com"
-	SandboxBaseURL    = "https://api.storekit-sandbox.itunes.apple.com"
+	ProductionBaseURL = "https://api.storekit.apple.com"
+	SandboxBaseURL    = "https://api.storekit-sandbox.apple.com"
 )
 
 type Client struct {

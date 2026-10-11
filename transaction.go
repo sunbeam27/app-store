@@ -54,9 +54,9 @@ type JWSTransactionDecodedPayload struct {
 	Currency                    string          `json:"currency,omitempty"`
 	Environment                 Environment     `json:"environment,omitempty"`
 	ExpiresDate                 int64           `json:"expiresDate,omitempty"`
-	InAppOwnerShipType          string          `json:"inAppOwnerShipType,omitempty"`
+	InAppOwnerShipType          string          `json:"inAppOwnershipType,omitempty"`
 	IsUpgraded                  bool            `json:"isUpgraded,omitempty"`
-	OfferDiscountType           string          `json:"OfferDiscountType,omitempty"`
+	OfferDiscountType           string          `json:"offerDiscountType,omitempty"`
 	OfferIdentifier             string          `json:"offerIdentifier,omitempty"`
 	OfferType                   OfferType       `json:"offerType,omitempty"`
 	OriginalPurchaseDate        int64           `json:"originalPurchaseDate,omitempty"`

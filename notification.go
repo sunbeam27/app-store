@@ -2,6 +2,7 @@ package app_store
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -12,6 +13,7 @@ type NotificationType string
 
 const (
 	NotificationTypeConsumptionRequest     NotificationType = "CONSUMPTION_REQUEST"
+	NotificationTypeOneTimeCharge          NotificationType = "ONE_TIME_CHARGE"
 	NotificationTypeDidChangeRenewalPref   NotificationType = "DID_CHANGE_RENEWAL_PREF"
 	NotificationTypeDidChangeRenewalStatus NotificationType = "DID_CHANGE_RENEWAL_STATUS"
 	NotificationTypeDidFailToRenew         NotificationType = "DID_FAIL_TO_RENEW"
@@ -70,13 +72,59 @@ type NotificationV2Payload struct {
 
 // NotificationData contains the transaction and renewal info.
 type NotificationData struct {
-	AppAppleId            int64       `json:"appAppleId"`
-	BundleId              string      `json:"bundleId"`
-	BundleVersion         string      `json:"bundleVersion"`
-	Environment           Environment `json:"environment"`
-	SignedRenewalInfo     string      `json:"signedRenewalInfo"`
-	SignedTransactionInfo string      `json:"signedTransactionInfo"`
-	Status                int32       `json:"status"`
+	ConsumptionRequestReason ConsumptionRequestReason `json:"consumptionRequestReason,omitempty"`
+	AppAppleId               int64                    `json:"appAppleId"`
+	BundleId                 string                   `json:"bundleId"`
+	BundleVersion            string                   `json:"bundleVersion"`
+	Environment              Environment              `json:"environment"`
+	SignedRenewalInfo        string                   `json:"signedRenewalInfo"`
+	SignedTransactionInfo    string                   `json:"signedTransactionInfo"`
+	Status                   int32                    `json:"status"`
+}
+
+// ConsumptionRequestReason is the customer's reason for requesting a refund.
+type ConsumptionRequestReason string
+
+const (
+	ConsumptionRequestReasonUnintendedPurchase      ConsumptionRequestReason = "UNINTENDED_PURCHASE"
+	ConsumptionRequestReasonFulfillmentIssue        ConsumptionRequestReason = "FULFILLMENT_ISSUE"
+	ConsumptionRequestReasonUnsatisfiedWithPurchase ConsumptionRequestReason = "UNSATISFIED_WITH_PURCHASE"
+	ConsumptionRequestReasonLegal                   ConsumptionRequestReason = "LEGAL"
+	ConsumptionRequestReasonOther                   ConsumptionRequestReason = "OTHER"
+)
+
+// ConsumptionRequestTransaction verifies and decodes the transaction for a
+// consumption notification. ParseNotificationRequest must verify the outer JWS
+// first; manually constructed payloads are not authenticated by this method.
+func (p *NotificationV2Payload) ConsumptionRequestTransaction() (*JWSTransactionDecodedPayload, error) {
+	return p.transactionFor(NotificationTypeConsumptionRequest)
+}
+
+// OneTimeChargeTransaction verifies and decodes a one-time purchase transaction.
+// This event covers consumables, non-consumables and non-renewing subscriptions.
+// ParseNotificationRequest must verify the outer JWS first.
+func (p *NotificationV2Payload) OneTimeChargeTransaction() (*JWSTransactionDecodedPayload, error) {
+	return p.transactionFor(NotificationTypeOneTimeCharge)
+}
+
+func (p *NotificationV2Payload) transactionFor(expected NotificationType) (*JWSTransactionDecodedPayload, error) {
+	if p == nil || p.NotificationType != expected {
+		return nil, fmt.Errorf("expected %s notification", expected)
+	}
+	if p.Data == nil || p.Data.SignedTransactionInfo == "" {
+		return nil, errors.New("notification is missing signed transaction information")
+	}
+	transaction, err := p.Data.DecodeTransactionInfo()
+	if err != nil {
+		return nil, fmt.Errorf("decode %s transaction: %w", expected, err)
+	}
+	if transaction.TransactionId == "" {
+		return nil, errors.New("notification transaction is missing transaction ID")
+	}
+	if transaction.BundleId != p.Data.BundleId || transaction.Environment != p.Data.Environment {
+		return nil, errors.New("notification and transaction app or environment mismatch")
+	}
+	return transaction, nil
 }
 
 // NotificationSummary for RENEWAL_EXTENDED summary notifications.
