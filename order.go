@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	orderUrl = "https://api.storekit.itunes.apple.com/inApps/v1/lookup/%s"
+	orderPath = "/inApps/v1/lookup/%s"
 )
 
 // https://developer.apple.com/documentation/appstoreserverapi/orderlookupresponse
@@ -23,26 +23,36 @@ type OrderLookupResponse struct {
 }
 
 func (o *OrderLookupResponse) DecodeTransaction() error {
-	if o.Status == nil || *o.Status == 0 {
+	if o.Status == nil || *o.Status != 0 {
 		return fmt.Errorf("invalid order")
 	}
 	var errs error
 	for _, signedTransaction := range o.SignedTransactions {
-		// decode signedTransaction
 		ts := new(JWSTransactionDecodedPayload)
 		err := DecodeClaims(signedTransaction, ts)
 		if err != nil {
-			errors.Join(errs, err)
+			errs = errors.Join(errs, err)
+			continue
 		}
+		o.Transactions = append(o.Transactions, ts)
 	}
 	return errs
 }
 
 func (c *Client) LookupOrder(ctx context.Context, orderId string) (*OrderLookupResponse, error) {
-	bearer := c.token.Bearer()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf(orderUrl, orderId), nil)
+	bearer, err := c.token.bearer()
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+fmt.Sprintf(orderPath, orderId), nil)
+	if err != nil {
+		return nil, err
+	}
 	req.Header.Set("Authorization", bearer)
-	resp, _ := c.client.Do(req)
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
 	defer resp.Body.Close()
 	bytes, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -62,5 +72,5 @@ func (c *Client) LookupOrder(ctx context.Context, orderId string) (*OrderLookupR
 		return nil, errRsp
 	}
 
-	return order, nil
+	return order, err
 }

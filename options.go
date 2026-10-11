@@ -9,3 +9,9 @@ func WithHttpClient(client *http.Client) Options {
 		c.client = client
 	}
 }
+
+func WithSandbox() Options {
+	return func(c *Client) {
+		c.baseURL = SandboxBaseURL
+	}
+}

@@ -7,10 +7,12 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"io"
 	"net/http"
+	"net/url"
 )
 
 const (
-	transactionInfoUrl = "https://api.storekit.itunes.apple.com/inApps/v1/transactions/%s"
+	transactionInfoPath    = "/inApps/v1/transactions/%s"
+	transactionHistoryPath = "/inApps/v2/history/%s"
 )
 
 type TransactionType string
@@ -52,9 +54,9 @@ type JWSTransactionDecodedPayload struct {
 	Currency                    string          `json:"currency,omitempty"`
 	Environment                 Environment     `json:"environment,omitempty"`
 	ExpiresDate                 int64           `json:"expiresDate,omitempty"`
-	InAppOwnerShipType          string          `json:"inAppOwnerShipType,omitempty"`
+	InAppOwnerShipType          string          `json:"inAppOwnershipType,omitempty"`
 	IsUpgraded                  bool            `json:"isUpgraded,omitempty"`
-	OfferDiscountType           string          `json:"OfferDiscountType,omitempty"`
+	OfferDiscountType           string          `json:"offerDiscountType,omitempty"`
 	OfferIdentifier             string          `json:"offerIdentifier,omitempty"`
 	OfferType                   OfferType       `json:"offerType,omitempty"`
 	OriginalPurchaseDate        int64           `json:"originalPurchaseDate,omitempty"`
@@ -75,11 +77,71 @@ type JWSTransactionDecodedPayload struct {
 	WebOrderLineItemId          string          `json:"webOrderLineItemId,omitempty"`
 }
 
-func (c *Client) GetTransactionInfo(ctx context.Context, transactionId string) (*JWSTransactionDecodedPayload, error) {
-	bearer := c.token.Bearer()
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf(transactionInfoUrl, transactionId), nil)
+// TransactionHistoryResponse https://developer.apple.com/documentation/appstoreserverapi/historyresponse
+type TransactionHistoryResponse struct {
+	AppAppleId         int64    `json:"appAppleId"`
+	BundleId           string   `json:"bundleId"`
+	Environment        string   `json:"environment"`
+	HasMore            bool     `json:"hasMore"`
+	Revision           string   `json:"revision"`
+	SignedTransactions []string `json:"signedTransactions"`
+}
+
+func (c *Client) GetTransactionHistory(ctx context.Context, transactionId string, revision string) (*TransactionHistoryResponse, error) {
+	requestURL := c.baseURL + fmt.Sprintf(transactionHistoryPath, transactionId)
+	if revision != "" {
+		requestURL += "?" + url.Values{"revision": {revision}}.Encode()
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	bearer, err := c.token.bearer()
+	if err != nil {
+		return nil, err
+	}
 	req.Header.Set("Authorization", bearer)
-	resp, _ := c.client.Do(req)
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	switch resp.StatusCode {
+	case http.StatusOK:
+		var result TransactionHistoryResponse
+		if err = json.Unmarshal(body, &result); err != nil {
+			return nil, err
+		}
+		return &result, nil
+	case http.StatusUnauthorized:
+		return nil, fmt.Errorf("%s", body)
+	default:
+		errRsp := &ErrorResponse{}
+		if err = json.Unmarshal(body, errRsp); err != nil {
+			return nil, err
+		}
+		return nil, errRsp
+	}
+}
+
+func (c *Client) GetTransactionInfo(ctx context.Context, transactionId string) (*JWSTransactionDecodedPayload, error) {
+	bearer, err := c.token.bearer()
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+fmt.Sprintf(transactionInfoPath, transactionId), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", bearer)
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
 	defer resp.Body.Close()
 	jwtTransaction := struct {
 		Transaction string `json:"signedTransactionInfo"`

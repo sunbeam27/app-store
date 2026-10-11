@@ -5,15 +5,22 @@ import (
 	"net/http"
 )
 
+const (
+	ProductionBaseURL = "https://api.storekit.apple.com"
+	SandboxBaseURL    = "https://api.storekit-sandbox.apple.com"
+)
+
 type Client struct {
-	token  *Token
-	client *http.Client
+	token   *Token
+	client  *http.Client
+	baseURL string
 }
 
 func NewClient(token *Token, otp ...Options) (*Client, error) {
 	c := &Client{
-		token:  token,
-		client: http.DefaultClient,
+		token:   token,
+		client:  http.DefaultClient,
+		baseURL: ProductionBaseURL,
 	}
 	for _, f := range otp {
 		f(c)
