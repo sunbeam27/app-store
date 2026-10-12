@@ -1,0 +1,78 @@
+name: Release
+on:
+  push:
+    branches: [main]
+    paths: [.github/release-version]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate release request
+        id: version
+        shell: bash
+        run: |
+          test "$GITHUB_REF" = refs/heads/main
+          version="$(cat .github/release-version)"
+          [[ "$version" =~ ^v0\.[0-9]+\.[0-9]+$|^v1\.[0-9]+\.[0-9]+$ ]]
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Check module dependencies
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+      - run: go test -race ./...
+      - run: go vet ./...
+      - run: go build ./...
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create version tag and source release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.verify.outputs.version }}
+        shell: bash
+        run: |
+          if gh release view "$VERSION" --json tagName >/dev/null 2>&1; then
+            echo "Release $VERSION already exists; leaving it unchanged."
+            exit 0
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/$VERSION" >/dev/null 2>&1; then
+            echo "Tag $VERSION already exists without a release; refusing to reuse it."
+            exit 1
+          fi
+          gh release create "$VERSION" --target "$GITHUB_SHA" --title "$VERSION" --generate-notes
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Verify published module is downloadable
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+          GOPROXY: https://proxy.golang.org
+        shell: bash
+        run: |
+          cd "$(mktemp -d)"
+          for attempt in 1 2 3 4 5; do
+            if go mod download -json "github.com/sunbeam27/app-store@$VERSION"; then
+              exit 0
+            fi
+            sleep 10
+          done
+          exit 1
