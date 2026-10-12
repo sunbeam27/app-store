@@ -12,8 +12,16 @@ Go SDK for Apple App Store Server API and Sign in with Apple.
 ## Installation
 
 ```bash
-go get github.com/sunbeam27/app-store
+go get github.com/sunbeam27/app-store@v0.1.0
 ```
+
+## Releases
+
+This SDK is distributed as a versioned Go module and source archives, without standalone binaries.
+To request a release, update `.github/release-version` on `main` to a new `v0.x.y` or `v1.x.y` version.
+The release workflow checks dependencies, runs race tests, vet and build, then creates the tag and GitHub Release at the tested commit.
+It also verifies the published module can be downloaded through the Go proxy.
+Existing releases and tags are never overwritten. The workflow can be rerun manually on `main`.
 
 ## App Store Server API
 
