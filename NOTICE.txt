@@ -1,0 +1,11 @@
+This project includes Go wire-model definitions, API mappings, signature-format
+implementations and test vectors derived from Apple's App Store Server Java
+Library v5.2.0 (commit 2d50adecdcf4c5cd8fbe285eaad305ef3ef60c17).
+Copyright (c) 2023-2026 Apple Inc. Licensed under the MIT License.
+The full license is reproduced in LICENSE.apple.txt.
+
+App Store Connect resource names, wire fields and operation mappings are derived
+from Apple's publicly available App Store Connect OpenAPI specification 4.5.1.
+https://developer.apple.com/documentation/appstoreconnectapi
+
+This is an independently maintained Go SDK, not an official Apple product.

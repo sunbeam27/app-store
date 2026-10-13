@@ -1,0 +1,423 @@
+{
+  "openapiVersion": "4.5.1",
+  "operations": [
+    {
+      "path": "/v1/apps",
+      "method": "GET",
+      "operationId": "apps_getCollection"
+    },
+    {
+      "path": "/v1/apps/{id}",
+      "method": "GET",
+      "operationId": "apps_getInstance"
+    },
+    {
+      "path": "/v1/apps/{id}",
+      "method": "PATCH",
+      "operationId": "apps_updateInstance"
+    },
+    {
+      "path": "/v1/apps/{id}/inAppPurchasesV2",
+      "method": "GET",
+      "operationId": "apps_inAppPurchasesV2_getToManyRelated"
+    },
+    {
+      "path": "/v1/apps/{id}/subscriptionGroups",
+      "method": "GET",
+      "operationId": "apps_subscriptionGroups_getToManyRelated"
+    },
+    {
+      "path": "/v1/apps/{id}/buildUploads",
+      "method": "GET",
+      "operationId": "apps_buildUploads_getToManyRelated"
+    },
+    {
+      "path": "/v1/builds",
+      "method": "GET",
+      "operationId": "builds_getCollection"
+    },
+    {
+      "path": "/v1/builds/{id}",
+      "method": "GET",
+      "operationId": "builds_getInstance"
+    },
+    {
+      "path": "/v1/builds/{id}",
+      "method": "PATCH",
+      "operationId": "builds_updateInstance"
+    },
+    {
+      "path": "/v1/buildUploads",
+      "method": "POST",
+      "operationId": "buildUploads_createInstance"
+    },
+    {
+      "path": "/v1/buildUploads/{id}",
+      "method": "GET",
+      "operationId": "buildUploads_getInstance"
+    },
+    {
+      "path": "/v1/buildUploads/{id}",
+      "method": "DELETE",
+      "operationId": "buildUploads_deleteInstance"
+    },
+    {
+      "path": "/v1/buildUploads/{id}/buildUploadFiles",
+      "method": "GET",
+      "operationId": "buildUploads_buildUploadFiles_getToManyRelated"
+    },
+    {
+      "path": "/v1/buildUploadFiles",
+      "method": "POST",
+      "operationId": "buildUploadFiles_createInstance"
+    },
+    {
+      "path": "/v1/buildUploadFiles/{id}",
+      "method": "GET",
+      "operationId": "buildUploadFiles_getInstance"
+    },
+    {
+      "path": "/v1/buildUploadFiles/{id}",
+      "method": "PATCH",
+      "operationId": "buildUploadFiles_updateInstance"
+    },
+    {
+      "path": "/v2/inAppPurchases",
+      "method": "POST",
+      "operationId": "inAppPurchasesV2_createInstance"
+    },
+    {
+      "path": "/v2/inAppPurchases/{id}",
+      "method": "GET",
+      "operationId": "inAppPurchasesV2_getInstance"
+    },
+    {
+      "path": "/v2/inAppPurchases/{id}",
+      "method": "PATCH",
+      "operationId": "inAppPurchasesV2_updateInstance"
+    },
+    {
+      "path": "/v2/inAppPurchases/{id}",
+      "method": "DELETE",
+      "operationId": "inAppPurchasesV2_deleteInstance"
+    },
+    {
+      "path": "/v2/inAppPurchases/{id}/inAppPurchaseLocalizations",
+      "method": "GET",
+      "operationId": "inAppPurchasesV2_inAppPurchaseLocalizations_getToManyRelated"
+    },
+    {
+      "path": "/v2/inAppPurchases/{id}/pricePoints",
+      "method": "GET",
+      "operationId": "inAppPurchasesV2_pricePoints_getToManyRelated"
+    },
+    {
+      "path": "/v1/inAppPurchaseLocalizations",
+      "method": "POST",
+      "operationId": "inAppPurchaseLocalizations_createInstance"
+    },
+    {
+      "path": "/v1/inAppPurchaseLocalizations/{id}",
+      "method": "GET",
+      "operationId": "inAppPurchaseLocalizations_getInstance"
+    },
+    {
+      "path": "/v1/inAppPurchaseLocalizations/{id}",
+      "method": "PATCH",
+      "operationId": "inAppPurchaseLocalizations_updateInstance"
+    },
+    {
+      "path": "/v1/inAppPurchaseLocalizations/{id}",
+      "method": "DELETE",
+      "operationId": "inAppPurchaseLocalizations_deleteInstance"
+    },
+    {
+      "path": "/v1/inAppPurchaseAvailabilities",
+      "method": "POST",
+      "operationId": "inAppPurchaseAvailabilities_createInstance"
+    },
+    {
+      "path": "/v1/inAppPurchasePriceSchedules",
+      "method": "POST",
+      "operationId": "inAppPurchasePriceSchedules_createInstance"
+    },
+    {
+      "path": "/v1/subscriptionGroups",
+      "method": "POST",
+      "operationId": "subscriptionGroups_createInstance"
+    },
+    {
+      "path": "/v1/subscriptionGroups/{id}",
+      "method": "GET",
+      "operationId": "subscriptionGroups_getInstance"
+    },
+    {
+      "path": "/v1/subscriptionGroups/{id}",
+      "method": "PATCH",
+      "operationId": "subscriptionGroups_updateInstance"
+    },
+    {
+      "path": "/v1/subscriptionGroups/{id}",
+      "method": "DELETE",
+      "operationId": "subscriptionGroups_deleteInstance"
+    },
+    {
+      "path": "/v1/subscriptionGroups/{id}/subscriptions",
+      "method": "GET",
+      "operationId": "subscriptionGroups_subscriptions_getToManyRelated"
+    },
+    {
+      "path": "/v1/subscriptionGroupLocalizations",
+      "method": "POST",
+      "operationId": "subscriptionGroupLocalizations_createInstance"
+    },
+    {
+      "path": "/v1/subscriptionGroupLocalizations/{id}",
+      "method": "GET",
+      "operationId": "subscriptionGroupLocalizations_getInstance"
+    },
+    {
+      "path": "/v1/subscriptionGroupLocalizations/{id}",
+      "method": "PATCH",
+      "operationId": "subscriptionGroupLocalizations_updateInstance"
+    },
+    {
+      "path": "/v1/subscriptionGroupLocalizations/{id}",
+      "method": "DELETE",
+      "operationId": "subscriptionGroupLocalizations_deleteInstance"
+    },
+    {
+      "path": "/v1/subscriptions",
+      "method": "POST",
+      "operationId": "subscriptions_createInstance"
+    },
+    {
+      "path": "/v1/subscriptions/{id}",
+      "method": "GET",
+      "operationId": "subscriptions_getInstance"
+    },
+    {
+      "path": "/v1/subscriptions/{id}",
+      "method": "PATCH",
+      "operationId": "subscriptions_updateInstance"
+    },
+    {
+      "path": "/v1/subscriptions/{id}",
+      "method": "DELETE",
+      "operationId": "subscriptions_deleteInstance"
+    },
+    {
+      "path": "/v1/subscriptions/{id}/subscriptionLocalizations",
+      "method": "GET",
+      "operationId": "subscriptions_subscriptionLocalizations_getToManyRelated"
+    },
+    {
+      "path": "/v1/subscriptions/{id}/pricePoints",
+      "method": "GET",
+      "operationId": "subscriptions_pricePoints_getToManyRelated"
+    },
+    {
+      "path": "/v1/subscriptions/{id}/prices",
+      "method": "GET",
+      "operationId": "subscriptions_prices_getToManyRelated"
+    },
+    {
+      "path": "/v1/subscriptionLocalizations",
+      "method": "POST",
+      "operationId": "subscriptionLocalizations_createInstance"
+    },
+    {
+      "path": "/v1/subscriptionLocalizations/{id}",
+      "method": "GET",
+      "operationId": "subscriptionLocalizations_getInstance"
+    },
+    {
+      "path": "/v1/subscriptionLocalizations/{id}",
+      "method": "PATCH",
+      "operationId": "subscriptionLocalizations_updateInstance"
+    },
+    {
+      "path": "/v1/subscriptionLocalizations/{id}",
+      "method": "DELETE",
+      "operationId": "subscriptionLocalizations_deleteInstance"
+    },
+    {
+      "path": "/v1/subscriptionAvailabilities",
+      "method": "POST",
+      "operationId": "subscriptionAvailabilities_createInstance"
+    },
+    {
+      "path": "/v1/subscriptionPrices",
+      "method": "POST",
+      "operationId": "subscriptionPrices_createInstance"
+    },
+    {
+      "path": "/v1/subscriptionPrices/{id}",
+      "method": "DELETE",
+      "operationId": "subscriptionPrices_deleteInstance"
+    },
+    {
+      "path": "/v1/territories",
+      "method": "GET",
+      "operationId": "territories_getCollection"
+    }
+  ],
+  "schemas": [
+    "AndroidToIosAppMappingDetail",
+    "App",
+    "AppClip",
+    "AppCustomProductPage",
+    "AppEncryptionDeclaration",
+    "AppEncryptionDeclarationState",
+    "AppEvent",
+    "AppInfo",
+    "AppMediaAssetState",
+    "AppMediaStateError",
+    "AppResponse",
+    "AppStoreAgeRating",
+    "AppStoreVersion",
+    "AppStoreVersionExperimentV2",
+    "AppStoreVersionState",
+    "AppUpdateRequest",
+    "AppVersionState",
+    "AppsResponse",
+    "BetaAppLocalization",
+    "BetaAppReviewDetail",
+    "BetaAppReviewSubmission",
+    "BetaBuildLocalization",
+    "BetaGroup",
+    "BetaInviteType",
+    "BetaLicenseAgreement",
+    "BetaReviewState",
+    "BetaTester",
+    "BetaTesterState",
+    "BrazilAgeRating",
+    "Build",
+    "BuildAudienceType",
+    "BuildBetaDetail",
+    "BuildBundle",
+    "BuildBundleType",
+    "BuildIcon",
+    "BuildResponse",
+    "BuildUpdateRequest",
+    "BuildUpload",
+    "BuildUploadCreateRequest",
+    "BuildUploadFile",
+    "BuildUploadFileCreateRequest",
+    "BuildUploadFileResponse",
+    "BuildUploadFileUpdateRequest",
+    "BuildUploadFilesResponse",
+    "BuildUploadResponse",
+    "BuildUploadState",
+    "BuildUploadsResponse",
+    "BuildsResponse",
+    "ChecksumAlgorithm",
+    "Checksums",
+    "CiProduct",
+    "DeliveryFileUploadOperation",
+    "DocumentLinks",
+    "EndUserLicenseAgreement",
+    "ErrorLinks",
+    "ErrorResponse",
+    "ErrorSourceParameter",
+    "ErrorSourcePointer",
+    "ExternalBetaState",
+    "GameCenterDetail",
+    "GameCenterEnabledVersion",
+    "HttpHeader",
+    "IconAssetType",
+    "ImageAsset",
+    "InAppPurchase",
+    "InAppPurchaseAppStoreReviewScreenshot",
+    "InAppPurchaseAvailability",
+    "InAppPurchaseAvailabilityCreateRequest",
+    "InAppPurchaseAvailabilityResponse",
+    "InAppPurchaseContent",
+    "InAppPurchaseImage",
+    "InAppPurchaseLocalization",
+    "InAppPurchaseLocalizationCreateRequest",
+    "InAppPurchaseLocalizationResponse",
+    "InAppPurchaseLocalizationUpdateRequest",
+    "InAppPurchaseLocalizationsResponse",
+    "InAppPurchaseOfferCode",
+    "InAppPurchasePrice",
+    "InAppPurchasePriceInlineCreate",
+    "InAppPurchasePricePoint",
+    "InAppPurchasePricePointsResponse",
+    "InAppPurchasePriceSchedule",
+    "InAppPurchasePriceScheduleCreateRequest",
+    "InAppPurchasePriceScheduleResponse",
+    "InAppPurchaseState",
+    "InAppPurchaseType",
+    "InAppPurchaseV2",
+    "InAppPurchaseV2CreateRequest",
+    "InAppPurchaseV2Response",
+    "InAppPurchaseV2UpdateRequest",
+    "InAppPurchaseVersion",
+    "InAppPurchasesV2Response",
+    "IntegerRange",
+    "InternalBetaState",
+    "PagedDocumentLinks",
+    "PagingInformation",
+    "Platform",
+    "PrereleaseVersion",
+    "PromotedPurchase",
+    "RelationshipLinks",
+    "ResourceLinks",
+    "ReviewSubmission",
+    "StateDetail",
+    "Subscription",
+    "SubscriptionAppStoreReviewScreenshot",
+    "SubscriptionAvailability",
+    "SubscriptionAvailabilityCreateRequest",
+    "SubscriptionAvailabilityResponse",
+    "SubscriptionCreateRequest",
+    "SubscriptionCustomerEligibility",
+    "SubscriptionGracePeriod",
+    "SubscriptionGracePeriodDuration",
+    "SubscriptionGroup",
+    "SubscriptionGroupCreateRequest",
+    "SubscriptionGroupLocalization",
+    "SubscriptionGroupLocalizationCreateRequest",
+    "SubscriptionGroupLocalizationResponse",
+    "SubscriptionGroupLocalizationUpdateRequest",
+    "SubscriptionGroupResponse",
+    "SubscriptionGroupUpdateRequest",
+    "SubscriptionGroupVersion",
+    "SubscriptionGroupsResponse",
+    "SubscriptionImage",
+    "SubscriptionIntroductoryOffer",
+    "SubscriptionIntroductoryOfferInlineCreate",
+    "SubscriptionLocalization",
+    "SubscriptionLocalizationCreateRequest",
+    "SubscriptionLocalizationResponse",
+    "SubscriptionLocalizationUpdateRequest",
+    "SubscriptionLocalizationsResponse",
+    "SubscriptionOfferCode",
+    "SubscriptionOfferDuration",
+    "SubscriptionOfferEligibility",
+    "SubscriptionOfferMode",
+    "SubscriptionPlanAvailability",
+    "SubscriptionPlanType",
+    "SubscriptionPrice",
+    "SubscriptionPriceCreateRequest",
+    "SubscriptionPriceInlineCreate",
+    "SubscriptionPricePoint",
+    "SubscriptionPricePointsResponse",
+    "SubscriptionPriceResponse",
+    "SubscriptionPricesResponse",
+    "SubscriptionPromotionalOffer",
+    "SubscriptionPromotionalOfferInlineCreate",
+    "SubscriptionResponse",
+    "SubscriptionStatusUrlVersion",
+    "SubscriptionUpdateRequest",
+    "SubscriptionVersion",
+    "SubscriptionsResponse",
+    "TerritoriesResponse",
+    "Territory",
+    "TerritoryInlineCreate",
+    "UploadOperation",
+    "WinBackOffer",
+    "csv"
+  ]
+}

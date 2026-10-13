@@ -1,379 +1,234 @@
 # app-store
 
-Go SDK for Apple App Store Server API and Sign in with Apple.
+独立维护的 Go SDK，面向 Apple 应用内购买和 App Store Connect 自动化管理。
 
-## Features
+| 包 | 职责 |
+|---|---|
+| `appstoreserver` | Apple App Store Server Library 的 Go 对应实现，提供 30 个 API 操作、鉴权客户端和签名数据验证 |
+| `appstoreserver/model` | 服务端 API、通知、订阅挽留消息和 Advanced Commerce 的请求、响应模型与枚举 |
+| `appstoreserver/offers` | 旧版促销优惠、促销优惠 V2 和首次订阅优惠资格签名 |
+| `appstoreserver/advancedcommerce` | StoreKit Advanced Commerce 应用内请求签名 |
+| `appstoreserver/receipt` | 从旧版 receipt 中提取交易 ID，辅助迁移 |
+| `appstoreconnect` | 52 个强类型操作，覆盖应用、构建、上传、内购商品、订阅、本地化、可售范围和价格管理 |
+| `appstoreconnect/model` | App Store Connect 的 JSON:API 请求和响应模型 |
+| `signin` | Sign in with Apple 登录，提供支持请求上下文的接口 |
 
-- **App Store Server API** - JWT token generation, order lookup, transaction info/history, subscription status, refund history, consumption information V2
-- **Sign in with Apple** - ID token verification, authorization code exchange, token refresh, token revocation
-- **App Store Server Notifications V2** - Parse and verify signed notifications
-- **Certificate Verification** - Apple root certificate chain validation
+兼容基线为 [Apple Java Library 5.2.0](https://github.com/apple/app-store-server-library-java/tree/v5.2.0) 和 [App Store Connect OpenAPI 4.5.1](https://developer.apple.com/documentation/appstoreconnectapi)。
+详细说明见[兼容与迁移文档](docs/compatibility.md)、[Connect 接口清单](docs/connect-api.md)和[可编译示例](examples/sdk/examples.go)。
 
-## Installation
+## 安装
 
-```bash
-go get github.com/sunbeam27/app-store@v0.1.0
+要求 **Go 1.26 或更高版本**，最低版本由当前 `golang.org/x/crypto` 的 OCSP 依赖决定。
+
+```sh
+go get github.com/sunbeam27/app-store@latest
 ```
 
-## Releases
+新包将随下一个版本发布。已发布的 `v0.1.0` 提供旧版根包接口；开发期间可安装当前分支：
 
-This SDK is distributed as a versioned Go module and source archives, without standalone binaries.
-To request a release, update `.github/release-version` on `main` to a new `v0.x.y` or `v1.x.y` version.
-The release workflow checks dependencies, runs race tests, vet and build, then creates the tag and GitHub Release at the tested commit.
-It also verifies the published module can be downloaded through the Go proxy.
-Existing releases and tags are never overwritten. The workflow can be rerun manually on `main`.
+```sh
+go get github.com/sunbeam27/app-store@codex/apple-sdk-and-connect
+```
+
+旧版根包接口继续保留，使用说明见 [docs/legacy.md](docs/legacy.md)。
 
 ## App Store Server API
 
-### Setup
+配置应用内购买签名密钥、Key ID、Issuer ID、Bundle ID 和运行环境：
 
 ```go
-import appstore "github.com/sunbeam27/app-store"
+import (
+    "github.com/sunbeam27/app-store/appstoreserver"
+    "github.com/sunbeam27/app-store/appstoreserver/model"
+)
 
-// Parse your private key (.p8 file)
-privateKey, err := appstore.ParsePrivateKey(privateKeyPEM)
-
-// Create token
-token := appstore.NewToken("YOUR_KEY_ID", "YOUR_ISSUER_ID", "com.your.bundle", privateKey)
-
-// Create client (production)
-client, err := appstore.NewClient(token)
-
-// Or create client for sandbox
-client, err := appstore.NewClient(token, appstore.WithSandbox())
-
-// With custom HTTP client
-client, err := appstore.NewClient(token, appstore.WithHttpClient(customHTTPClient))
-```
-
-### Lookup Order
-
-```go
-order, err := client.LookupOrder(ctx, "ORDER_ID")
+client, err := appstoreserver.NewAppStoreServerAPIClient(appstoreserver.ClientConfig{
+    SigningKey:  string(keyPEM),
+    KeyID:       keyID,
+    IssuerID:    issuerID,
+    BundleID:    "com.example.app",
+    Environment: model.EnvironmentSandbox,
+})
 if err != nil {
-    log.Fatal(err)
+    return err
 }
 
-// Decode signed transactions
-err = order.DecodeTransaction()
-for _, tx := range order.Transactions {
-    fmt.Println(tx.ProductId, tx.TransactionId)
-}
-```
-
-### Get Transaction Info
-
-```go
-tx, err := client.GetTransactionInfo(ctx, "TRANSACTION_ID")
+response, err := client.GetTransactionInfo(ctx, transactionID)
 if err != nil {
-    log.Fatal(err)
+    return err
 }
-fmt.Println(tx.ProductId, tx.PurchaseDate)
+// response.SignedTransactionInfo retains the original signed JWS.
 ```
 
-### Get Transaction History
+客户端还支持订单查询、订阅状态筛选、交易和退款分页查询、通知查询、续期日期延长、消费信息 V1/V2、App Account Token 更新、应用交易查询和完成交易。订阅挽留消息操作使用同一个客户端。
+
+API 调用返回 Apple 的原始响应模型，验签由独立的验证器显式执行。
+
+### 验证交易和通知
+
+从 [Apple PKI](https://www.apple.com/certificateauthority/) 下载可信的 Apple 根证书，传入 DER 或 PEM 格式的证书内容：
 
 ```go
-resp, err := client.GetTransactionHistory(ctx, "ORIGINAL_TRANSACTION_ID", "")
+verifier, err := appstoreserver.NewSignedDataVerifier(appstoreserver.VerifierConfig{
+    RootCertificates: [][]byte{appleRootDER},
+    BundleID:         "com.example.app",
+    Environment:      model.EnvironmentSandbox,
+    OnlineChecks:     true,
+})
 if err != nil {
-    log.Fatal(err)
+    return err
 }
-
-// Paginate with revision
-for resp.HasMore {
-    resp, err = client.GetTransactionHistory(ctx, "ORIGINAL_TRANSACTION_ID", resp.Revision)
+if response.SignedTransactionInfo == nil {
+    return errors.New("missing signed transaction")
 }
+transaction, err := verifier.VerifyAndDecodeTransaction(ctx, *response.SignedTransactionInfo)
 ```
 
-### Get Subscription Status
+生产环境还需要设置 `AppAppleID: model.Ptr(yourAppAppleID)`。
+验证器会检查证书链、Apple 签名证书扩展、JWS 签名，以及各类载荷对应的应用和环境标识。
+
+验证接口覆盖交易、续期信息、通知、应用交易和订阅挽留实时请求。在线检查使用当前时间验证 OCSP 状态；已验证证书链最多缓存 15 分钟，并受证书到期时间限制。离线检查按载荷的签名时间验证证书有效性，与 Apple 官方库保持一致。Xcode 和 LocalTesting 必须显式配置，仍会校验应用和环境。
+
+处理 HTTP 通知请求体时，先解析 `signedPayload` 字符串，再调用 `VerifyAndDecodeNotification`。内部的 `signedTransactionInfo` 和 `signedRenewalInfo` 是各自独立的 JWS，使用前应分别验签。
+
+### 筛选交易历史
 
 ```go
-status, err := client.GetAllSubscriptionStatuses(ctx, "ORIGINAL_TRANSACTION_ID")
-if err != nil {
-    log.Fatal(err)
-}
-
-for _, group := range status.Data {
-    for _, item := range group.LastTransactions {
-        fmt.Printf("Status: %d\n", item.Status)
-    }
-}
-```
-
-### Get Refund History
-
-```go
-refunds, err := client.GetRefundHistory(ctx, "ORIGINAL_TRANSACTION_ID", "")
-if err != nil {
-    log.Fatal(err)
-}
-
-// Paginate
-for refunds.HasMore {
-    refunds, err = client.GetRefundHistory(ctx, "ORIGINAL_TRANSACTION_ID", refunds.Revision)
-}
-```
-
-## Sign in with Apple
-
-### Setup
-
-```go
-authClient := appstore.NewAppleAuthClient(
-    "com.your.services.id",  // Services ID (or Bundle ID)
-    "YOUR_TEAM_ID",
-    "YOUR_KEY_ID",
-    privateKeyPEM,           // .p8 file content
+response, err := client.GetTransactionHistory(ctx, transactionID, revision,
+    &model.TransactionHistoryRequest{
+        ProductIDs: []string{"com.example.monthly"},
+        Revoked:    model.Ptr(false),
+        Sort:       model.Ptr(model.TransactionHistoryRequestOrderAscending),
+    },
+    appstoreserver.GetTransactionHistoryVersionV2,
 )
 ```
 
-### Exchange Authorization Code
+使用下一页 revision 时，保持筛选条件一致。省略版本参数时默认使用 V1，与 Java 重载接口一致；查询当前版本的交易历史时显式传入 V2。
+
+## App Store Connect
+
+为 Connect 客户端单独配置 App Store Connect 集成密钥：
 
 ```go
-tokenResp, err := authClient.ExchangeCode("AUTH_CODE", "https://your-app.com/callback")
-if err != nil {
-    log.Fatal(err)
-}
-fmt.Println(tokenResp.AccessToken, tokenResp.IDToken)
-```
+import (
+    "github.com/sunbeam27/app-store/appstoreconnect"
+    connectmodel "github.com/sunbeam27/app-store/appstoreconnect/model"
+)
 
-### Verify ID Token
-
-Generate and retain a nonce for each authorization request, then pass the expected nonce when verifying its ID token. The nonce must match the value sent to Apple (including any hashing required by your platform). `VerifyIDToken` validates the signature and claims only; use `VerifyIDTokenWithNonce` to bind the token to the login request.
-
-```go
-claims, err := authClient.VerifyIDTokenWithNonce(idToken, expectedNonce)
-if err != nil {
-    log.Fatal(err)
-}
-fmt.Println(claims.Subject, claims.Email, claims.IsEmailVerified())
-```
-
-### Refresh Token
-
-```go
-tokenResp, err := authClient.RefreshAccessToken("REFRESH_TOKEN")
-```
-
-### Revoke Token
-
-```go
-err := authClient.RevokeToken("TOKEN", "access_token") // or "refresh_token"
-```
-
-## App Store Server Notifications V2
-
-### Parse Notification
-
-```go
-// From raw HTTP request body
-payload, err := appstore.ParseNotificationRequest(body)
-if err != nil {
-    log.Fatal(err)
-}
-
-fmt.Println(payload.NotificationType, payload.Subtype)
-
-// Decode transaction and renewal info
-if payload.Data != nil {
-    tx, err := payload.Data.DecodeTransactionInfo()
-    renewal, err := payload.Data.DecodeRenewalInfo()
-}
-```
-
-### Notification Types
-
-| Type | Description |
-|------|-------------|
-| `SUBSCRIBED` | New subscription |
-| `DID_RENEW` | Subscription renewed |
-| `DID_FAIL_TO_RENEW` | Renewal failed |
-| `DID_CHANGE_RENEWAL_STATUS` | Auto-renew preference changed |
-| `DID_CHANGE_RENEWAL_PREF` | Subscription plan changed |
-| `EXPIRED` | Subscription expired |
-| `GRACE_PERIOD_EXPIRED` | Grace period ended |
-| `OFFER_REDEEMED` | Promotional offer redeemed |
-| `REFUND` | Transaction refunded |
-| `REFUND_DECLINED` | Refund request declined |
-| `REFUND_REVERSED` | Refund reversed |
-| `REVOKE` | Family Sharing access revoked |
-| `CONSUMPTION_REQUEST` | Consumption info requested |
-| `ONE_TIME_CHARGE` | Consumable, non-consumable, or non-renewing subscription purchase |
-| `RENEWAL_EXTENDED` | Renewal date extended |
-| `PRICE_INCREASE` | Price increase notification |
-| `TEST` | Test notification |
-
-### Consumption Request Notification and Reply
-
-The notification's HTTP POST body is `{"signedPayload":"<Apple-signed JWS>"}`.
-After signature verification, a consumption notification has this shape
-(the JWS placeholders below are illustrative, not valid signed test tokens):
-
-```json
-{
-  "notificationType": "CONSUMPTION_REQUEST",
-  "notificationUUID": "notification-uuid",
-  "version": "2.0",
-  "signedDate": 1760000000000,
-  "data": {
-    "appAppleId": 1234567890,
-    "bundleId": "com.example.app",
-    "environment": "Production",
-    "consumptionRequestReason": "FULFILLMENT_ISSUE",
-    "signedTransactionInfo": "<Apple-signed transaction JWS>"
-  }
-}
-```
-
-Verify the outer notification and its signed transaction:
-
-```go
-notification, err := appstore.ParseNotificationRequest(body)
-if err != nil {
-    return err
-}
-tx, err := notification.ConsumptionRequestTransaction()
-if err != nil {
-    return err
-}
-// tx.TransactionId identifies the purchase to report.
-// notification.Data.ConsumptionRequestReason contains the refund reason.
-```
-
-Check the verified `bundleId` and environment against your app configuration,
-and `appAppleId` in production (Apple omits it in sandbox notifications).
-For multiple subjects, choose the client from your trusted
-app/subject configuration, using the matching production or sandbox credentials.
-The transaction helper checks that the inner and outer bundle/environment agree;
-it does not select or authenticate your business tenant.
-
-Obtain the customer's consent for sharing consumption data and load actual
-usage from your application. Do not submit consumption data without that consent.
-Submit within 12 hours of receiving the notification:
-
-```go
-// Example: a delivered consumable, with 25% consumed.
-// customerConsented and consumedPercentage must come from your own records.
-consumedPercentage := int32(25000)
-request := appstore.ConsumptionRequest{
-    CustomerConsented:     customerConsented,
-    ConsumptionPercentage: &consumedPercentage,
-    DeliveryStatus:        appstore.DeliveryStatusDelivered,
-    SampleContentProvided: false,
-    // Omit RefundPreference to express no preference.
-}
-err = client.SendConsumptionInformation(ctx, tx.TransactionId, request)
+connect, err := appstoreconnect.NewClient(appstoreconnect.Config{
+    SigningKey: string(connectKeyPEM),
+    KeyID:      connectKeyID,
+    IssuerID:   connectIssuerID,
+})
 if err != nil {
     return err
 }
 ```
 
-The method sends:
+个人密钥使用 `IndividualKey: true`，并省略 Issuer ID。两个 API 客户端都支持自定义 HTTP 客户端和外部令牌提供函数。
 
-```http
-PUT /inApps/v2/transactions/consumption/{transactionId}
-Authorization: Bearer <App Store Server API JWT>
-Content-Type: application/json
-
-{
-  "customerConsented": true,
-  "consumptionPercentage": 25000,
-  "deliveryStatus": "DELIVERED",
-  "sampleContentProvided": false
-}
-```
-
-Production host: `https://api.storekit.apple.com`.
-Sandbox host: `https://api.storekit-sandbox.apple.com`.
-
-Apple returns **202 Accepted** when it receives the data. The method returns
-`nil`; there is no refund-decision response object. The eventual decision arrives
-in a `REFUND` or `REFUND_DECLINED` notification.
-
-Separately, respond to Apple's notification POST with **200 OK** after durable
-acceptance. Store a consumption job first, then let a worker submit the data;
-return an error response if durable acceptance fails. Deduplicate using
-`notificationUUID`, and retry transient API failures within the 12-hour window.
-Do not send consumption JSON as the HTTP response to the notification POST.
-
-Consumption V2 uses string delivery/refund values, not V1's numeric fields:
-
-- `consumptionPercentage` ranges from 0 to 100000 (100%). A pointer to zero
-  sends `0`; `nil` omits the field.
-- For undelivered content, use an appropriate `UNDELIVERED_*` status and zero
-  consumption.
-- For auto-renewable subscriptions, omit consumption percentage; Apple
-  calculates it. Other product types require a value strictly between 0 and
-  100000 when requesting `GRANT_PRORATED`.
-- Refund preferences are `DECLINE`, `GRANT_FULL`, and `GRANT_PRORATED`.
-  Apple makes the final decision.
-
-References: [Send Consumption Information](https://developer.apple.com/documentation/appstoreserverapi/send-consumption-information),
-[ConsumptionRequest](https://developer.apple.com/documentation/appstoreserverapi/consumptionrequest).
-
-### One-Time Purchase Notification
-
-`ONE_TIME_CHARGE` reports purchases of consumables, non-consumables, and
-non-renewing subscriptions. It is available in production and sandbox.
-Auto-renewable subscriptions continue to use `SUBSCRIBED` and `DID_RENEW`.
-
-After outer signature verification, the notification contains:
-
-```json
-{
-  "notificationType": "ONE_TIME_CHARGE",
-  "notificationUUID": "notification-uuid",
-  "version": "2.0",
-  "signedDate": 1760000000000,
-  "data": {
-    "appAppleId": 1234567890,
-    "bundleId": "com.example.app",
-    "environment": "Production",
-    "signedTransactionInfo": "<Apple-signed transaction JWS>"
-  }
-}
-```
+### 创建内购商品
 
 ```go
-notification, err := appstore.ParseNotificationRequest(body)
+request := appstoreconnect.NewInAppPurchaseRequest(
+    appID, "100 Coins", "com.example.coins100", connectmodel.InAppPurchaseTypeConsumable,
+)
+product, err := connect.CreateInAppPurchase(ctx, request)
+```
+
+该操作创建商品记录。后续通过对应接口配置本地化信息、可售范围和价格，提交审核需要单独操作。
+
+### 创建自动续期订阅
+
+```go
+group, err := connect.CreateSubscriptionGroup(ctx,
+    appstoreconnect.NewSubscriptionGroupRequest(appID, "Premium"))
 if err != nil {
     return err
 }
-tx, err := notification.OneTimeChargeTransaction()
+request := appstoreconnect.NewSubscriptionRequest(
+    group.Data.ID, "Premium Monthly", "com.example.premium.monthly",
+)
+request.Data.Attributes.SubscriptionPeriod = connectmodel.Ptr("ONE_MONTH")
+subscription, err := connect.CreateSubscription(ctx, request)
+```
+
+自动续期订阅归属于订阅组，使用专门的接口管理。
+
+### 上传 IPA 或 PKG
+
+SDK 使用 Apple 的 [Build Uploads API](https://developer.apple.com/documentation/appstoreconnectapi/post-v1-builduploads)，依次创建上传记录、为各文件预留上传位置、流式上传指定字节区间，并提交文件。
+
+```go
+file, err := os.Open("MyApp.ipa")
 if err != nil {
     return err
 }
-// Validate the app/environment, associate tx.AppAccountToken with your user,
-// and atomically record tx.TransactionId plus the content grant.
-// Handle repeated notifications and device-originated transactions idempotently.
-// Inspect tx.Type, tx.ProductId, tx.Quantity, and tx.InAppOwnerShipType.
+defer file.Close()
+info, err := file.Stat()
+if err != nil {
+    return err
+}
+
+upload, err := connect.UploadBuild(ctx,
+    appstoreconnect.NewBuildUploadRequest(appID, "1.0", "42", connectmodel.PlatformIos),
+    []appstoreconnect.UploadFile{{
+        Name:    info.Name(),
+        Size:    info.Size(),
+        Content: file,
+    }},
+)
+if err != nil {
+    return err
+}
+// File commitment starts asynchronous processing.
+processed, err := connect.WaitForBuildUpload(ctx, upload.Data.ID, 10*time.Second)
 ```
 
-Use `transactionId` to deduplicate delivery across device purchase processing
-and notifications. A notification is not an instruction to grant the same
-purchase again. If `appAccountToken` is absent, use an existing verified purchase
-association; do not guess the user.
+通过 context 截止时间限制上传和处理等待时长。SDK 会根据 `.ipa`、`.pkg` 后缀推断 UTI，其他受支持的文件类型需要显式传入 UTI。校验和对象是可选项，可通过 `UploadFile.Checksums` 提供。
 
-A compiling HTTP receiver with app/environment checks and business callbacks
-is provided in [examples/notifications/handler.go](examples/notifications/handler.go).
-Connect its callbacks to durable storage and your consumption worker.
+也可以分别调用 `UploadBuildFile`、`CreateBuildUploadFile`、`UploadOperations`、`CommitBuildUploadFile` 和状态查询接口。上传失败时不会自动提交文件；`UploadError` 保留上传和文件 ID，高层上传接口也会在后续步骤失败时返回已有上传记录。上传 URL 只接收 Apple 指定的操作请求头，不附加 Connect API 的 Bearer Token。SDK 不会自动重试写操作。
 
-Reference: [notificationType](https://developer.apple.com/documentation/appstoreservernotifications/notificationtype).
+### 筛选和分页
 
-## Error Handling
+GET 方法接收 `url.Values`，用于配置筛选条件、返回字段、关联资源和条数限制：
 
 ```go
-order, err := client.LookupOrder(ctx, "ORDER_ID")
-if err != nil {
-    if e := appstore.UnwrapError(err); e != nil {
-        fmt.Printf("Apple error: code=%d message=%s\n", e.ErrorCode, e.ErrorMessage)
-    }
-}
+apps, err := connect.ListApps(ctx, url.Values{
+    "filter[bundleId]": {"com.example.app"},
+    "limit":           {"50"},
+})
 ```
 
-## References
+将响应中的 `response.Links.Next` 传给 `Client.Do`，即可读取下一页。其他 JSON API 操作也可使用 `Do`；带鉴权的请求限定在客户端配置的 API 来源地址内。
 
-- [App Store Server API](https://developer.apple.com/documentation/appstoreserverapi)
-- [Sign in with Apple](https://developer.apple.com/documentation/sign_in_with_apple)
-- [App Store Server Notifications V2](https://developer.apple.com/documentation/appstoreservernotifications)
+## Sign in with Apple 登录
 
+```go
+import "github.com/sunbeam27/app-store/signin"
+
+login := signin.NewAppleAuthClient(clientID, teamID, keyID, string(signInKeyPEM))
+tokens, err := login.ExchangeCodeContext(ctx, authorizationCode, redirectURI)
+claims, err := login.VerifyIDTokenWithNonceContext(ctx, idToken, expectedNonce)
+```
+
+登录包还提供支持 context 的令牌刷新和撤销接口，原有方法继续保留以兼容现有调用。
+
+## 模型和错误处理
+
+可选标量字段使用指针，区分字段缺失与零值、`false`。枚举类型保留未知的字符串或数值，模型通过 `UnknownFields` 保存未知 JSON 字段。JSON:API 的 `included` 联合类型使用 `json.RawMessage` 表示。
+
+使用 `errors.As` 提取 `*appstoreserver.APIError` 或 `*appstoreconnect.APIError`，即可查看 HTTP 状态、响应头、重试时间和原始响应体。服务端错误保留 Apple 原始错误码，Connect 错误保留 JSON:API 错误数组及字段位置。验签错误提供 `VerificationStatus`，可区分允许重试的 OCSP 故障。
+
+## 开发和发布
+
+```sh
+go test -race ./...
+go vet ./...
+go build ./...
+```
+
+模型可从锁定的上游输入重复生成，操作步骤见 [docs/compatibility.md](docs/compatibility.md)。测试覆盖 Apple 官方 JSON、签名数据、Xcode 和 receipt 样本，动态生成的证书与 OCSP 场景，以及完整的模拟分片上传流程。
+
+SDK 以带版本的 Go module 和源码归档发布。在 `main` 上更新 `.github/release-version` 即可申请发布；工作流会先检查依赖、race、vet 和构建结果，再创建版本。已有标签和 Release 不会被覆盖。

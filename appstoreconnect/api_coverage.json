@@ -1,0 +1,418 @@
+[
+  {
+    "method": "ListApps",
+    "httpMethod": "GET",
+    "path": "/v1/apps",
+    "operationId": "apps_getCollection",
+    "request": null,
+    "response": "AppsResponse"
+  },
+  {
+    "method": "GetApp",
+    "httpMethod": "GET",
+    "path": "/v1/apps/{id}",
+    "operationId": "apps_getInstance",
+    "request": null,
+    "response": "AppResponse"
+  },
+  {
+    "method": "UpdateApp",
+    "httpMethod": "PATCH",
+    "path": "/v1/apps/{id}",
+    "operationId": "apps_updateInstance",
+    "request": "AppUpdateRequest",
+    "response": "AppResponse"
+  },
+  {
+    "method": "ListAppInAppPurchases",
+    "httpMethod": "GET",
+    "path": "/v1/apps/{id}/inAppPurchasesV2",
+    "operationId": "apps_inAppPurchasesV2_getToManyRelated",
+    "request": null,
+    "response": "InAppPurchasesV2Response"
+  },
+  {
+    "method": "ListAppSubscriptionGroups",
+    "httpMethod": "GET",
+    "path": "/v1/apps/{id}/subscriptionGroups",
+    "operationId": "apps_subscriptionGroups_getToManyRelated",
+    "request": null,
+    "response": "SubscriptionGroupsResponse"
+  },
+  {
+    "method": "ListAppBuildUploads",
+    "httpMethod": "GET",
+    "path": "/v1/apps/{id}/buildUploads",
+    "operationId": "apps_buildUploads_getToManyRelated",
+    "request": null,
+    "response": "BuildUploadsResponse"
+  },
+  {
+    "method": "ListBuilds",
+    "httpMethod": "GET",
+    "path": "/v1/builds",
+    "operationId": "builds_getCollection",
+    "request": null,
+    "response": "BuildsResponse"
+  },
+  {
+    "method": "GetBuild",
+    "httpMethod": "GET",
+    "path": "/v1/builds/{id}",
+    "operationId": "builds_getInstance",
+    "request": null,
+    "response": "BuildResponse"
+  },
+  {
+    "method": "UpdateBuild",
+    "httpMethod": "PATCH",
+    "path": "/v1/builds/{id}",
+    "operationId": "builds_updateInstance",
+    "request": "BuildUpdateRequest",
+    "response": "BuildResponse"
+  },
+  {
+    "method": "CreateBuildUpload",
+    "httpMethod": "POST",
+    "path": "/v1/buildUploads",
+    "operationId": "buildUploads_createInstance",
+    "request": "BuildUploadCreateRequest",
+    "response": "BuildUploadResponse"
+  },
+  {
+    "method": "GetBuildUpload",
+    "httpMethod": "GET",
+    "path": "/v1/buildUploads/{id}",
+    "operationId": "buildUploads_getInstance",
+    "request": null,
+    "response": "BuildUploadResponse"
+  },
+  {
+    "method": "DeleteBuildUpload",
+    "httpMethod": "DELETE",
+    "path": "/v1/buildUploads/{id}",
+    "operationId": "buildUploads_deleteInstance",
+    "request": null,
+    "response": null
+  },
+  {
+    "method": "ListBuildUploadFiles",
+    "httpMethod": "GET",
+    "path": "/v1/buildUploads/{id}/buildUploadFiles",
+    "operationId": "buildUploads_buildUploadFiles_getToManyRelated",
+    "request": null,
+    "response": "BuildUploadFilesResponse"
+  },
+  {
+    "method": "CreateBuildUploadFile",
+    "httpMethod": "POST",
+    "path": "/v1/buildUploadFiles",
+    "operationId": "buildUploadFiles_createInstance",
+    "request": "BuildUploadFileCreateRequest",
+    "response": "BuildUploadFileResponse"
+  },
+  {
+    "method": "GetBuildUploadFile",
+    "httpMethod": "GET",
+    "path": "/v1/buildUploadFiles/{id}",
+    "operationId": "buildUploadFiles_getInstance",
+    "request": null,
+    "response": "BuildUploadFileResponse"
+  },
+  {
+    "method": "CommitBuildUploadFile",
+    "httpMethod": "PATCH",
+    "path": "/v1/buildUploadFiles/{id}",
+    "operationId": "buildUploadFiles_updateInstance",
+    "request": "BuildUploadFileUpdateRequest",
+    "response": "BuildUploadFileResponse"
+  },
+  {
+    "method": "CreateInAppPurchase",
+    "httpMethod": "POST",
+    "path": "/v2/inAppPurchases",
+    "operationId": "inAppPurchasesV2_createInstance",
+    "request": "InAppPurchaseV2CreateRequest",
+    "response": "InAppPurchaseV2Response"
+  },
+  {
+    "method": "GetInAppPurchase",
+    "httpMethod": "GET",
+    "path": "/v2/inAppPurchases/{id}",
+    "operationId": "inAppPurchasesV2_getInstance",
+    "request": null,
+    "response": "InAppPurchaseV2Response"
+  },
+  {
+    "method": "UpdateInAppPurchase",
+    "httpMethod": "PATCH",
+    "path": "/v2/inAppPurchases/{id}",
+    "operationId": "inAppPurchasesV2_updateInstance",
+    "request": "InAppPurchaseV2UpdateRequest",
+    "response": "InAppPurchaseV2Response"
+  },
+  {
+    "method": "DeleteInAppPurchase",
+    "httpMethod": "DELETE",
+    "path": "/v2/inAppPurchases/{id}",
+    "operationId": "inAppPurchasesV2_deleteInstance",
+    "request": null,
+    "response": null
+  },
+  {
+    "method": "ListInAppPurchaseLocalizations",
+    "httpMethod": "GET",
+    "path": "/v2/inAppPurchases/{id}/inAppPurchaseLocalizations",
+    "operationId": "inAppPurchasesV2_inAppPurchaseLocalizations_getToManyRelated",
+    "request": null,
+    "response": "InAppPurchaseLocalizationsResponse"
+  },
+  {
+    "method": "ListInAppPurchasePricePoints",
+    "httpMethod": "GET",
+    "path": "/v2/inAppPurchases/{id}/pricePoints",
+    "operationId": "inAppPurchasesV2_pricePoints_getToManyRelated",
+    "request": null,
+    "response": "InAppPurchasePricePointsResponse"
+  },
+  {
+    "method": "CreateInAppPurchaseLocalization",
+    "httpMethod": "POST",
+    "path": "/v1/inAppPurchaseLocalizations",
+    "operationId": "inAppPurchaseLocalizations_createInstance",
+    "request": "InAppPurchaseLocalizationCreateRequest",
+    "response": "InAppPurchaseLocalizationResponse"
+  },
+  {
+    "method": "GetInAppPurchaseLocalization",
+    "httpMethod": "GET",
+    "path": "/v1/inAppPurchaseLocalizations/{id}",
+    "operationId": "inAppPurchaseLocalizations_getInstance",
+    "request": null,
+    "response": "InAppPurchaseLocalizationResponse"
+  },
+  {
+    "method": "UpdateInAppPurchaseLocalization",
+    "httpMethod": "PATCH",
+    "path": "/v1/inAppPurchaseLocalizations/{id}",
+    "operationId": "inAppPurchaseLocalizations_updateInstance",
+    "request": "InAppPurchaseLocalizationUpdateRequest",
+    "response": "InAppPurchaseLocalizationResponse"
+  },
+  {
+    "method": "DeleteInAppPurchaseLocalization",
+    "httpMethod": "DELETE",
+    "path": "/v1/inAppPurchaseLocalizations/{id}",
+    "operationId": "inAppPurchaseLocalizations_deleteInstance",
+    "request": null,
+    "response": null
+  },
+  {
+    "method": "CreateInAppPurchaseAvailability",
+    "httpMethod": "POST",
+    "path": "/v1/inAppPurchaseAvailabilities",
+    "operationId": "inAppPurchaseAvailabilities_createInstance",
+    "request": "InAppPurchaseAvailabilityCreateRequest",
+    "response": "InAppPurchaseAvailabilityResponse"
+  },
+  {
+    "method": "CreateInAppPurchasePriceSchedule",
+    "httpMethod": "POST",
+    "path": "/v1/inAppPurchasePriceSchedules",
+    "operationId": "inAppPurchasePriceSchedules_createInstance",
+    "request": "InAppPurchasePriceScheduleCreateRequest",
+    "response": "InAppPurchasePriceScheduleResponse"
+  },
+  {
+    "method": "CreateSubscriptionGroup",
+    "httpMethod": "POST",
+    "path": "/v1/subscriptionGroups",
+    "operationId": "subscriptionGroups_createInstance",
+    "request": "SubscriptionGroupCreateRequest",
+    "response": "SubscriptionGroupResponse"
+  },
+  {
+    "method": "GetSubscriptionGroup",
+    "httpMethod": "GET",
+    "path": "/v1/subscriptionGroups/{id}",
+    "operationId": "subscriptionGroups_getInstance",
+    "request": null,
+    "response": "SubscriptionGroupResponse"
+  },
+  {
+    "method": "UpdateSubscriptionGroup",
+    "httpMethod": "PATCH",
+    "path": "/v1/subscriptionGroups/{id}",
+    "operationId": "subscriptionGroups_updateInstance",
+    "request": "SubscriptionGroupUpdateRequest",
+    "response": "SubscriptionGroupResponse"
+  },
+  {
+    "method": "DeleteSubscriptionGroup",
+    "httpMethod": "DELETE",
+    "path": "/v1/subscriptionGroups/{id}",
+    "operationId": "subscriptionGroups_deleteInstance",
+    "request": null,
+    "response": null
+  },
+  {
+    "method": "ListGroupSubscriptions",
+    "httpMethod": "GET",
+    "path": "/v1/subscriptionGroups/{id}/subscriptions",
+    "operationId": "subscriptionGroups_subscriptions_getToManyRelated",
+    "request": null,
+    "response": "SubscriptionsResponse"
+  },
+  {
+    "method": "CreateSubscriptionGroupLocalization",
+    "httpMethod": "POST",
+    "path": "/v1/subscriptionGroupLocalizations",
+    "operationId": "subscriptionGroupLocalizations_createInstance",
+    "request": "SubscriptionGroupLocalizationCreateRequest",
+    "response": "SubscriptionGroupLocalizationResponse"
+  },
+  {
+    "method": "GetSubscriptionGroupLocalization",
+    "httpMethod": "GET",
+    "path": "/v1/subscriptionGroupLocalizations/{id}",
+    "operationId": "subscriptionGroupLocalizations_getInstance",
+    "request": null,
+    "response": "SubscriptionGroupLocalizationResponse"
+  },
+  {
+    "method": "UpdateSubscriptionGroupLocalization",
+    "httpMethod": "PATCH",
+    "path": "/v1/subscriptionGroupLocalizations/{id}",
+    "operationId": "subscriptionGroupLocalizations_updateInstance",
+    "request": "SubscriptionGroupLocalizationUpdateRequest",
+    "response": "SubscriptionGroupLocalizationResponse"
+  },
+  {
+    "method": "DeleteSubscriptionGroupLocalization",
+    "httpMethod": "DELETE",
+    "path": "/v1/subscriptionGroupLocalizations/{id}",
+    "operationId": "subscriptionGroupLocalizations_deleteInstance",
+    "request": null,
+    "response": null
+  },
+  {
+    "method": "CreateSubscription",
+    "httpMethod": "POST",
+    "path": "/v1/subscriptions",
+    "operationId": "subscriptions_createInstance",
+    "request": "SubscriptionCreateRequest",
+    "response": "SubscriptionResponse"
+  },
+  {
+    "method": "GetSubscription",
+    "httpMethod": "GET",
+    "path": "/v1/subscriptions/{id}",
+    "operationId": "subscriptions_getInstance",
+    "request": null,
+    "response": "SubscriptionResponse"
+  },
+  {
+    "method": "UpdateSubscription",
+    "httpMethod": "PATCH",
+    "path": "/v1/subscriptions/{id}",
+    "operationId": "subscriptions_updateInstance",
+    "request": "SubscriptionUpdateRequest",
+    "response": "SubscriptionResponse"
+  },
+  {
+    "method": "DeleteSubscription",
+    "httpMethod": "DELETE",
+    "path": "/v1/subscriptions/{id}",
+    "operationId": "subscriptions_deleteInstance",
+    "request": null,
+    "response": null
+  },
+  {
+    "method": "ListSubscriptionLocalizations",
+    "httpMethod": "GET",
+    "path": "/v1/subscriptions/{id}/subscriptionLocalizations",
+    "operationId": "subscriptions_subscriptionLocalizations_getToManyRelated",
+    "request": null,
+    "response": "SubscriptionLocalizationsResponse"
+  },
+  {
+    "method": "ListSubscriptionPricePoints",
+    "httpMethod": "GET",
+    "path": "/v1/subscriptions/{id}/pricePoints",
+    "operationId": "subscriptions_pricePoints_getToManyRelated",
+    "request": null,
+    "response": "SubscriptionPricePointsResponse"
+  },
+  {
+    "method": "ListSubscriptionPrices",
+    "httpMethod": "GET",
+    "path": "/v1/subscriptions/{id}/prices",
+    "operationId": "subscriptions_prices_getToManyRelated",
+    "request": null,
+    "response": "SubscriptionPricesResponse"
+  },
+  {
+    "method": "CreateSubscriptionLocalization",
+    "httpMethod": "POST",
+    "path": "/v1/subscriptionLocalizations",
+    "operationId": "subscriptionLocalizations_createInstance",
+    "request": "SubscriptionLocalizationCreateRequest",
+    "response": "SubscriptionLocalizationResponse"
+  },
+  {
+    "method": "GetSubscriptionLocalization",
+    "httpMethod": "GET",
+    "path": "/v1/subscriptionLocalizations/{id}",
+    "operationId": "subscriptionLocalizations_getInstance",
+    "request": null,
+    "response": "SubscriptionLocalizationResponse"
+  },
+  {
+    "method": "UpdateSubscriptionLocalization",
+    "httpMethod": "PATCH",
+    "path": "/v1/subscriptionLocalizations/{id}",
+    "operationId": "subscriptionLocalizations_updateInstance",
+    "request": "SubscriptionLocalizationUpdateRequest",
+    "response": "SubscriptionLocalizationResponse"
+  },
+  {
+    "method": "DeleteSubscriptionLocalization",
+    "httpMethod": "DELETE",
+    "path": "/v1/subscriptionLocalizations/{id}",
+    "operationId": "subscriptionLocalizations_deleteInstance",
+    "request": null,
+    "response": null
+  },
+  {
+    "method": "CreateSubscriptionAvailability",
+    "httpMethod": "POST",
+    "path": "/v1/subscriptionAvailabilities",
+    "operationId": "subscriptionAvailabilities_createInstance",
+    "request": "SubscriptionAvailabilityCreateRequest",
+    "response": "SubscriptionAvailabilityResponse"
+  },
+  {
+    "method": "CreateSubscriptionPrice",
+    "httpMethod": "POST",
+    "path": "/v1/subscriptionPrices",
+    "operationId": "subscriptionPrices_createInstance",
+    "request": "SubscriptionPriceCreateRequest",
+    "response": "SubscriptionPriceResponse"
+  },
+  {
+    "method": "DeleteSubscriptionPrice",
+    "httpMethod": "DELETE",
+    "path": "/v1/subscriptionPrices/{id}",
+    "operationId": "subscriptionPrices_deleteInstance",
+    "request": null,
+    "response": null
+  },
+  {
+    "method": "ListTerritories",
+    "httpMethod": "GET",
+    "path": "/v1/territories",
+    "operationId": "territories_getCollection",
+    "request": null,
+    "response": "TerritoriesResponse"
+  }
+]
