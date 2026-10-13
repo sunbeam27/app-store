@@ -24,10 +24,10 @@
 go get github.com/sunbeam27/app-store@latest
 ```
 
-新包将随下一个版本发布。已发布的 `v0.1.0` 提供旧版根包接口；开发期间可安装当前分支：
+`v0.2.0` 提供上述新模块，也可以指定版本安装：
 
 ```sh
-go get github.com/sunbeam27/app-store@codex/apple-sdk-and-connect
+go get github.com/sunbeam27/app-store@v0.2.0
 ```
 
 旧版根包接口继续保留，使用说明见 [docs/legacy.md](docs/legacy.md)。

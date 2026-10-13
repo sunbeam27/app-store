@@ -58,7 +58,12 @@ jobs:
             echo "Tag $VERSION already exists without a release; refusing to reuse it."
             exit 1
           fi
-          gh release create "$VERSION" --target "$GITHUB_SHA" --title "$VERSION" --generate-notes
+          notes="docs/releases/$VERSION.md"
+          if test -f "$notes"; then
+            gh release create "$VERSION" --target "$GITHUB_SHA" --title "$VERSION" --notes-file "$notes"
+          else
+            gh release create "$VERSION" --target "$GITHUB_SHA" --title "$VERSION" --generate-notes
+          fi
       - uses: actions/setup-go@v5
         with:
           go-version: '1.26.x'
