@@ -1,36 +1,31 @@
-# Legacy root package (v0.1 API)
+# 旧版根包接口（v0.1 API）
 
-New integrations should use the packages described in the [main README](../README.md).
-The root API remains supported for source compatibility.
+新接入应使用[主 README](../README.md)介绍的新包。根包 API 继续保留，以兼容现有代码。
 
 # app-store
 
-Go SDK for Apple App Store Server API and Sign in with Apple.
+用于 Apple App Store Server API 和 Sign in with Apple 的 Go SDK。
 
-## Features
+## 功能
 
-- **App Store Server API** - JWT token generation, order lookup, transaction info/history, subscription status, refund history, consumption information V2
-- **Sign in with Apple** - ID token verification, authorization code exchange, token refresh, token revocation
-- **App Store Server Notifications V2** - Parse and verify signed notifications
-- **Certificate Verification** - Apple root certificate chain validation
+- **App Store Server API**：生成 JWT 令牌、查询订单、交易详情和历史、订阅状态、退款历史，以及提交消费信息 V2。
+- **Sign in with Apple**：验证 ID Token、交换授权码、刷新和撤销令牌。
+- **App Store Server Notifications V2**：解析通知并验证签名。
+- **证书验证**：验证 Apple 根证书链。
 
-## Installation
+## 安装
 
 ```bash
 go get github.com/sunbeam27/app-store@v0.1.0
 ```
 
-## Releases
+## 发布
 
-This SDK is distributed as a versioned Go module and source archives, without standalone binaries.
-To request a release, update `.github/release-version` on `main` to a new `v0.x.y` or `v1.x.y` version.
-The release workflow checks dependencies, runs race tests, vet and build, then creates the tag and GitHub Release at the tested commit.
-It also verifies the published module can be downloaded through the Go proxy.
-Existing releases and tags are never overwritten. The workflow can be rerun manually on `main`.
+SDK 以带版本的 Go module 和源码归档发布，不提供独立二进制文件。申请发布时，在 `main` 上将 `.github/release-version` 更新为新的 `v0.x.y` 或 `v1.x.y`。发布工作流检查依赖，执行 race 测试、vet 和构建，再在已验证的提交上创建标签和 GitHub Release，并检查发布后的 module 能否通过 Go 代理下载。已有版本和标签不会被覆盖，也可在 `main` 上手动重新运行工作流。
 
 ## App Store Server API
 
-### Setup
+### 初始化
 
 ```go
 import appstore "github.com/sunbeam27/app-store"
@@ -51,7 +46,7 @@ client, err := appstore.NewClient(token, appstore.WithSandbox())
 client, err := appstore.NewClient(token, appstore.WithHttpClient(customHTTPClient))
 ```
 
-### Lookup Order
+### 查询订单
 
 ```go
 order, err := client.LookupOrder(ctx, "ORDER_ID")
@@ -66,7 +61,7 @@ for _, tx := range order.Transactions {
 }
 ```
 
-### Get Transaction Info
+### 查询交易详情
 
 ```go
 tx, err := client.GetTransactionInfo(ctx, "TRANSACTION_ID")
@@ -76,7 +71,7 @@ if err != nil {
 fmt.Println(tx.ProductId, tx.PurchaseDate)
 ```
 
-### Get Transaction History
+### 查询交易历史
 
 ```go
 resp, err := client.GetTransactionHistory(ctx, "ORIGINAL_TRANSACTION_ID", "")
@@ -90,7 +85,7 @@ for resp.HasMore {
 }
 ```
 
-### Get Subscription Status
+### 查询订阅状态
 
 ```go
 status, err := client.GetAllSubscriptionStatuses(ctx, "ORIGINAL_TRANSACTION_ID")
@@ -105,7 +100,7 @@ for _, group := range status.Data {
 }
 ```
 
-### Get Refund History
+### 查询退款历史
 
 ```go
 refunds, err := client.GetRefundHistory(ctx, "ORIGINAL_TRANSACTION_ID", "")
@@ -119,9 +114,9 @@ for refunds.HasMore {
 }
 ```
 
-## Sign in with Apple
+## Sign in with Apple 登录
 
-### Setup
+### 初始化
 
 ```go
 authClient := appstore.NewAppleAuthClient(
@@ -132,7 +127,7 @@ authClient := appstore.NewAppleAuthClient(
 )
 ```
 
-### Exchange Authorization Code
+### 交换授权码
 
 ```go
 tokenResp, err := authClient.ExchangeCode("AUTH_CODE", "https://your-app.com/callback")
@@ -142,9 +137,9 @@ if err != nil {
 fmt.Println(tokenResp.AccessToken, tokenResp.IDToken)
 ```
 
-### Verify ID Token
+### 验证 ID Token
 
-Generate and retain a nonce for each authorization request, then pass the expected nonce when verifying its ID token. The nonce must match the value sent to Apple (including any hashing required by your platform). `VerifyIDToken` validates the signature and claims only; use `VerifyIDTokenWithNonce` to bind the token to the login request.
+为每次授权请求生成并保存 nonce，验证 ID Token 时传入预期 nonce。该值必须与发送给 Apple 的值一致，包括平台要求的哈希处理。`VerifyIDToken` 只验证签名和声明；使用 `VerifyIDTokenWithNonce` 将令牌绑定到对应登录请求。
 
 ```go
 claims, err := authClient.VerifyIDTokenWithNonce(idToken, expectedNonce)
@@ -154,21 +149,21 @@ if err != nil {
 fmt.Println(claims.Subject, claims.Email, claims.IsEmailVerified())
 ```
 
-### Refresh Token
+### 刷新令牌
 
 ```go
 tokenResp, err := authClient.RefreshAccessToken("REFRESH_TOKEN")
 ```
 
-### Revoke Token
+### 撤销令牌
 
 ```go
 err := authClient.RevokeToken("TOKEN", "access_token") // or "refresh_token"
 ```
 
-## App Store Server Notifications V2
+## App Store 服务端通知 V2
 
-### Parse Notification
+### 解析通知
 
 ```go
 // From raw HTTP request body
@@ -186,33 +181,31 @@ if payload.Data != nil {
 }
 ```
 
-### Notification Types
+### 通知类型
 
-| Type | Description |
-|------|-------------|
-| `SUBSCRIBED` | New subscription |
-| `DID_RENEW` | Subscription renewed |
-| `DID_FAIL_TO_RENEW` | Renewal failed |
-| `DID_CHANGE_RENEWAL_STATUS` | Auto-renew preference changed |
-| `DID_CHANGE_RENEWAL_PREF` | Subscription plan changed |
-| `EXPIRED` | Subscription expired |
-| `GRACE_PERIOD_EXPIRED` | Grace period ended |
-| `OFFER_REDEEMED` | Promotional offer redeemed |
-| `REFUND` | Transaction refunded |
-| `REFUND_DECLINED` | Refund request declined |
-| `REFUND_REVERSED` | Refund reversed |
-| `REVOKE` | Family Sharing access revoked |
-| `CONSUMPTION_REQUEST` | Consumption info requested |
-| `ONE_TIME_CHARGE` | Consumable, non-consumable, or non-renewing subscription purchase |
-| `RENEWAL_EXTENDED` | Renewal date extended |
-| `PRICE_INCREASE` | Price increase notification |
-| `TEST` | Test notification |
+| 类型 | 说明 |
+|------|------|
+| `SUBSCRIBED` | 新建订阅 |
+| `DID_RENEW` | 订阅续期 |
+| `DID_FAIL_TO_RENEW` | 续期失败 |
+| `DID_CHANGE_RENEWAL_STATUS` | 自动续期设置变化 |
+| `DID_CHANGE_RENEWAL_PREF` | 订阅方案变化 |
+| `EXPIRED` | 订阅到期 |
+| `GRACE_PERIOD_EXPIRED` | 宽限期结束 |
+| `OFFER_REDEEMED` | 使用促销优惠 |
+| `REFUND` | 交易已退款 |
+| `REFUND_DECLINED` | 退款申请被拒绝 |
+| `REFUND_REVERSED` | 退款被撤销 |
+| `REVOKE` | 家庭共享访问权限被撤销 |
+| `CONSUMPTION_REQUEST` | 请求消费信息 |
+| `ONE_TIME_CHARGE` | 购买消耗型、非消耗型商品或非自动续期订阅 |
+| `RENEWAL_EXTENDED` | 续期日期延长 |
+| `PRICE_INCREASE` | 涨价通知 |
+| `TEST` | 测试通知 |
 
-### Consumption Request Notification and Reply
+### 消费信息请求通知与回复
 
-The notification's HTTP POST body is `{"signedPayload":"<Apple-signed JWS>"}`.
-After signature verification, a consumption notification has this shape
-(the JWS placeholders below are illustrative, not valid signed test tokens):
+通知的 HTTP POST 请求体为 `{"signedPayload":"<Apple-signed JWS>"}`。验证签名后，消费信息请求通知的结构如下。下面的 JWS 占位符仅用于展示结构，不是有效的签名测试令牌：
 
 ```json
 {
@@ -230,7 +223,7 @@ After signature verification, a consumption notification has this shape
 }
 ```
 
-Verify the outer notification and its signed transaction:
+验证外层通知及其中的签名交易：
 
 ```go
 notification, err := appstore.ParseNotificationRequest(body)
@@ -245,16 +238,9 @@ if err != nil {
 // notification.Data.ConsumptionRequestReason contains the refund reason.
 ```
 
-Check the verified `bundleId` and environment against your app configuration,
-and `appAppleId` in production (Apple omits it in sandbox notifications).
-For multiple subjects, choose the client from your trusted
-app/subject configuration, using the matching production or sandbox credentials.
-The transaction helper checks that the inner and outer bundle/environment agree;
-it does not select or authenticate your business tenant.
+将已验证的 `bundleId` 和环境与应用配置核对；生产环境还应核对 `appAppleId`，Apple 在沙盒通知中省略该字段。涉及多个主体时，应根据可信的应用、主体配置选择客户端，并使用匹配的生产或沙盒凭据。交易辅助方法检查内外层的 Bundle ID 和环境是否一致，业务租户的选择和认证由调用方负责。
 
-Obtain the customer's consent for sharing consumption data and load actual
-usage from your application. Do not submit consumption data without that consent.
-Submit within 12 hours of receiving the notification:
+先取得用户共享消费数据的同意，再从应用记录读取实际使用情况。未取得同意时不要提交消费数据。收到通知后应在 12 小时内提交：
 
 ```go
 // Example: a delivered consumable, with 25% consumed.
@@ -273,7 +259,7 @@ if err != nil {
 }
 ```
 
-The method sends:
+该方法发送以下请求：
 
 ```http
 PUT /inApps/v2/transactions/consumption/{transactionId}
@@ -288,41 +274,27 @@ Content-Type: application/json
 }
 ```
 
-Production host: `https://api.storekit.apple.com`.
-Sandbox host: `https://api.storekit-sandbox.apple.com`.
+生产环境地址：`https://api.storekit.apple.com`。
+沙盒环境地址：`https://api.storekit-sandbox.apple.com`。
 
-Apple returns **202 Accepted** when it receives the data. The method returns
-`nil`; there is no refund-decision response object. The eventual decision arrives
-in a `REFUND` or `REFUND_DECLINED` notification.
+Apple 接收数据后返回 **202 Accepted**，方法返回 `nil`，此时不会返回退款决定。最终结果通过 `REFUND` 或 `REFUND_DECLINED` 通知发送。
 
-Separately, respond to Apple's notification POST with **200 OK** after durable
-acceptance. Store a consumption job first, then let a worker submit the data;
-return an error response if durable acceptance fails. Deduplicate using
-`notificationUUID`, and retry transient API failures within the 12-hour window.
-Do not send consumption JSON as the HTTP response to the notification POST.
+收到 Apple 通知 POST 后，先持久化受理结果，再回复 **200 OK**。建议先保存消费信息任务，由 worker 提交数据；持久化失败时返回错误响应。使用 `notificationUUID` 去重，在 12 小时窗口内重试临时 API 故障。不要将消费信息 JSON 作为通知 POST 的 HTTP 响应体。
 
-Consumption V2 uses string delivery/refund values, not V1's numeric fields:
+消费信息 V2 的交付状态和退款偏好使用字符串值，V1 使用数值字段：
 
-- `consumptionPercentage` ranges from 0 to 100000 (100%). A pointer to zero
-  sends `0`; `nil` omits the field.
-- For undelivered content, use an appropriate `UNDELIVERED_*` status and zero
-  consumption.
-- For auto-renewable subscriptions, omit consumption percentage; Apple
-  calculates it. Other product types require a value strictly between 0 and
-  100000 when requesting `GRANT_PRORATED`.
-- Refund preferences are `DECLINE`, `GRANT_FULL`, and `GRANT_PRORATED`.
-  Apple makes the final decision.
+- `consumptionPercentage` 范围为 0～100000，对应 0%～100%。指向零值的指针会发送 `0`，`nil` 会省略该字段。
+- 未交付内容使用合适的 `UNDELIVERED_*` 状态，并将消费比例设为零。
+- 自动续期订阅省略消费比例，由 Apple 计算。其他商品类型申请 `GRANT_PRORATED` 时，该值必须严格大于 0、小于 100000。
+- 退款偏好为 `DECLINE`、`GRANT_FULL`、`GRANT_PRORATED`，最终决定由 Apple 作出。
 
-References: [Send Consumption Information](https://developer.apple.com/documentation/appstoreserverapi/send-consumption-information),
-[ConsumptionRequest](https://developer.apple.com/documentation/appstoreserverapi/consumptionrequest).
+参考：[提交消费信息](https://developer.apple.com/documentation/appstoreserverapi/send-consumption-information)、[ConsumptionRequest](https://developer.apple.com/documentation/appstoreserverapi/consumptionrequest)。
 
-### One-Time Purchase Notification
+### 一次性购买通知
 
-`ONE_TIME_CHARGE` reports purchases of consumables, non-consumables, and
-non-renewing subscriptions. It is available in production and sandbox.
-Auto-renewable subscriptions continue to use `SUBSCRIBED` and `DID_RENEW`.
+`ONE_TIME_CHARGE` 用于报告消耗型、非消耗型商品和非自动续期订阅的购买，生产与沙盒环境均支持。自动续期订阅继续使用 `SUBSCRIBED` 和 `DID_RENEW`。
 
-After outer signature verification, the notification contains:
+验证外层签名后，通知内容如下：
 
 ```json
 {
@@ -354,18 +326,13 @@ if err != nil {
 // Inspect tx.Type, tx.ProductId, tx.Quantity, and tx.InAppOwnerShipType.
 ```
 
-Use `transactionId` to deduplicate delivery across device purchase processing
-and notifications. A notification is not an instruction to grant the same
-purchase again. If `appAccountToken` is absent, use an existing verified purchase
-association; do not guess the user.
+使用 `transactionId` 对设备购买处理和通知发货统一去重，避免同一笔交易因重复通知而重复发放内容。缺少 `appAccountToken` 时，应使用已有的可信购买关联确定用户，不要猜测归属。
 
-A compiling HTTP receiver with app/environment checks and business callbacks
-is provided in [examples/notifications/handler.go](../examples/notifications/handler.go).
-Connect its callbacks to durable storage and your consumption worker.
+[examples/notifications/handler.go](../examples/notifications/handler.go) 提供可编译的 HTTP 接收示例，包含应用、环境检查和业务回调。将回调接入持久化存储和消费信息 worker 即可。
 
-Reference: [notificationType](https://developer.apple.com/documentation/appstoreservernotifications/notificationtype).
+参考：[notificationType](https://developer.apple.com/documentation/appstoreservernotifications/notificationtype)。
 
-## Error Handling
+## 错误处理
 
 ```go
 order, err := client.LookupOrder(ctx, "ORDER_ID")
@@ -376,8 +343,8 @@ if err != nil {
 }
 ```
 
-## References
+## 参考资料
 
 - [App Store Server API](https://developer.apple.com/documentation/appstoreserverapi)
-- [Sign in with Apple](https://developer.apple.com/documentation/sign_in_with_apple)
-- [App Store Server Notifications V2](https://developer.apple.com/documentation/appstoreservernotifications)
+- [Sign in with Apple 登录](https://developer.apple.com/documentation/sign_in_with_apple)
+- [App Store 服务端通知 V2](https://developer.apple.com/documentation/appstoreservernotifications)

@@ -1,40 +1,40 @@
 # app-store
 
-An independently maintained Go SDK for Apple commerce and App Store Connect automation.
+独立维护的 Go SDK，面向 Apple 应用内购买和 App Store Connect 自动化管理。
 
-| Package | Responsibility |
+| 包 | 职责 |
 |---|---|
-| `appstoreserver` | Go counterpart to Apple App Store Server Library: 30 API operations, authenticated clients and signed-data verification |
-| `appstoreserver/model` | Server API, notifications, retention messaging and Advanced Commerce wire models and enums |
-| `appstoreserver/offers` | Legacy promotional offers, promotional offer V2 and introductory eligibility signatures |
-| `appstoreserver/advancedcommerce` | StoreKit Advanced Commerce in-app request signatures |
-| `appstoreserver/receipt` | Extract transaction IDs when migrating legacy receipts |
-| `appstoreconnect` | 52 typed operations for apps, builds, uploads, in-app purchases, subscriptions, localization, availability and pricing |
-| `appstoreconnect/model` | App Store Connect JSON:API request and response models |
-| `signin` | Sign in with Apple, including request-context variants |
+| `appstoreserver` | Apple App Store Server Library 的 Go 对应实现，提供 30 个 API 操作、鉴权客户端和签名数据验证 |
+| `appstoreserver/model` | 服务端 API、通知、订阅挽留消息和 Advanced Commerce 的请求、响应模型与枚举 |
+| `appstoreserver/offers` | 旧版促销优惠、促销优惠 V2 和首次订阅优惠资格签名 |
+| `appstoreserver/advancedcommerce` | StoreKit Advanced Commerce 应用内请求签名 |
+| `appstoreserver/receipt` | 从旧版 receipt 中提取交易 ID，辅助迁移 |
+| `appstoreconnect` | 52 个强类型操作，覆盖应用、构建、上传、内购商品、订阅、本地化、可售范围和价格管理 |
+| `appstoreconnect/model` | App Store Connect 的 JSON:API 请求和响应模型 |
+| `signin` | Sign in with Apple 登录，提供支持请求上下文的接口 |
 
-Compatibility baselines: [Apple Java Library 5.2.0](https://github.com/apple/app-store-server-library-java/tree/v5.2.0) and [App Store Connect OpenAPI 4.5.1](https://developer.apple.com/documentation/appstoreconnectapi).
-See [compatibility and migration](docs/compatibility.md), [Connect API coverage](docs/connect-api.md), and [compiling examples](examples/sdk/examples.go).
+兼容基线为 [Apple Java Library 5.2.0](https://github.com/apple/app-store-server-library-java/tree/v5.2.0) 和 [App Store Connect OpenAPI 4.5.1](https://developer.apple.com/documentation/appstoreconnectapi)。
+详细说明见[兼容与迁移文档](docs/compatibility.md)、[Connect 接口清单](docs/connect-api.md)和[可编译示例](examples/sdk/examples.go)。
 
-## Installation
+## 安装
 
-Requires **Go 1.26 or later**. This minimum follows the current `golang.org/x/crypto` OCSP dependency.
+要求 **Go 1.26 或更高版本**，最低版本由当前 `golang.org/x/crypto` 的 OCSP 依赖决定。
 
 ```sh
 go get github.com/sunbeam27/app-store@latest
 ```
 
-The new packages are part of the next release. The published `v0.1.0` provides the legacy root package; during development, install this branch:
+新包将随下一个版本发布。已发布的 `v0.1.0` 提供旧版根包接口；开发期间可安装当前分支：
 
 ```sh
 go get github.com/sunbeam27/app-store@codex/apple-sdk-and-connect
 ```
 
-The original root API remains available. Its documentation is in [docs/legacy.md](docs/legacy.md).
+旧版根包接口继续保留，使用说明见 [docs/legacy.md](docs/legacy.md)。
 
 ## App Store Server API
 
-Configure the In-App Purchase signing key, key ID, issuer ID, bundle ID and environment:
+配置应用内购买签名密钥、Key ID、Issuer ID、Bundle ID 和运行环境：
 
 ```go
 import (
@@ -60,13 +60,13 @@ if err != nil {
 // response.SignedTransactionInfo retains the original signed JWS.
 ```
 
-The client also supports order lookup, subscription status filtering, transaction and refund pagination, notifications, renewal-date extensions, consumption V1/V2, App Account Token updates, app transactions and finishing transactions. Retention messaging operations share the same client.
+客户端还支持订单查询、订阅状态筛选、交易和退款分页查询、通知查询、续期日期延长、消费信息 V1/V2、App Account Token 更新、应用交易查询和完成交易。订阅挽留消息操作使用同一个客户端。
 
-API calls return Apple's wire responses. Verification is explicit and independent.
+API 调用返回 Apple 的原始响应模型，验签由独立的验证器显式执行。
 
-### Verify transactions and notifications
+### 验证交易和通知
 
-Download the trusted Apple roots from [Apple PKI](https://www.apple.com/certificateauthority/) and pass their DER or PEM contents:
+从 [Apple PKI](https://www.apple.com/certificateauthority/) 下载可信的 Apple 根证书，传入 DER 或 PEM 格式的证书内容：
 
 ```go
 verifier, err := appstoreserver.NewSignedDataVerifier(appstoreserver.VerifierConfig{
@@ -84,14 +84,14 @@ if response.SignedTransactionInfo == nil {
 transaction, err := verifier.VerifyAndDecodeTransaction(ctx, *response.SignedTransactionInfo)
 ```
 
-For production, also set `AppAppleID: model.Ptr(yourAppAppleID)`.
-The verifier checks the certificate chain, Apple signing-certificate extensions, JWS signature and application/environment identifiers applicable to each payload type.
+生产环境还需要设置 `AppAppleID: model.Ptr(yourAppAppleID)`。
+验证器会检查证书链、Apple 签名证书扩展、JWS 签名，以及各类载荷对应的应用和环境标识。
 
-Methods cover transactions, renewal information, notifications, app transactions and retention realtime requests. Online checks verify OCSP status at the current time. Verified chains are cached for up to 15 minutes, bounded by certificate expiry. Offline checks validate certificates at the payload signing time, matching Apple's library. Xcode and LocalTesting are explicit testing environments and still enforce application/environment checks.
+验证接口覆盖交易、续期信息、通知、应用交易和订阅挽留实时请求。在线检查使用当前时间验证 OCSP 状态；已验证证书链最多缓存 15 分钟，并受证书到期时间限制。离线检查按载荷的签名时间验证证书有效性，与 Apple 官方库保持一致。Xcode 和 LocalTesting 必须显式配置，仍会校验应用和环境。
 
-For an HTTP notification body, decode its `signedPayload` string and pass it to `VerifyAndDecodeNotification`. The inner `signedTransactionInfo` and `signedRenewalInfo` are separate JWS values; verify each one before using it.
+处理 HTTP 通知请求体时，先解析 `signedPayload` 字符串，再调用 `VerifyAndDecodeNotification`。内部的 `signedTransactionInfo` 和 `signedRenewalInfo` 是各自独立的 JWS，使用前应分别验签。
 
-### Transaction-history filters
+### 筛选交易历史
 
 ```go
 response, err := client.GetTransactionHistory(ctx, transactionID, revision,
@@ -104,11 +104,11 @@ response, err := client.GetTransactionHistory(ctx, transactionID, revision,
 )
 ```
 
-Keep the same filters when requesting the next revision. The omitted version defaults to V1, matching the Java overload; explicitly select V2 for current history.
+使用下一页 revision 时，保持筛选条件一致。省略版本参数时默认使用 V1，与 Java 重载接口一致；查询当前版本的交易历史时显式传入 V2。
 
 ## App Store Connect
 
-Configure an App Store Connect integration key separately from the Server API client:
+为 Connect 客户端单独配置 App Store Connect 集成密钥：
 
 ```go
 import (
@@ -126,9 +126,9 @@ if err != nil {
 }
 ```
 
-Individual keys use `IndividualKey: true` with an omitted issuer ID. Both clients support custom HTTP clients and external token providers.
+个人密钥使用 `IndividualKey: true`，并省略 Issuer ID。两个 API 客户端都支持自定义 HTTP 客户端和外部令牌提供函数。
 
-### Create an in-app purchase
+### 创建内购商品
 
 ```go
 request := appstoreconnect.NewInAppPurchaseRequest(
@@ -137,9 +137,9 @@ request := appstoreconnect.NewInAppPurchaseRequest(
 product, err := connect.CreateInAppPurchase(ctx, request)
 ```
 
-This creates the product record. Configure localization, availability and pricing with the corresponding APIs. Submission for review is a separate operation.
+该操作创建商品记录。后续通过对应接口配置本地化信息、可售范围和价格，提交审核需要单独操作。
 
-### Create an auto-renewable subscription
+### 创建自动续期订阅
 
 ```go
 group, err := connect.CreateSubscriptionGroup(ctx,
@@ -154,11 +154,11 @@ request.Data.Attributes.SubscriptionPeriod = connectmodel.Ptr("ONE_MONTH")
 subscription, err := connect.CreateSubscription(ctx, request)
 ```
 
-Auto-renewable subscriptions belong to a subscription group. They have separate APIs from one-time in-app purchases.
+自动续期订阅归属于订阅组，使用专门的接口管理。
 
-### Upload an IPA or PKG
+### 上传 IPA 或 PKG
 
-The SDK uses Apple's [Build Uploads API](https://developer.apple.com/documentation/appstoreconnectapi/post-v1-builduploads): create the upload, reserve each file, stream the specified byte ranges, and commit each file.
+SDK 使用 Apple 的 [Build Uploads API](https://developer.apple.com/documentation/appstoreconnectapi/post-v1-builduploads)，依次创建上传记录、为各文件预留上传位置、流式上传指定字节区间，并提交文件。
 
 ```go
 file, err := os.Open("MyApp.ipa")
@@ -186,13 +186,13 @@ if err != nil {
 processed, err := connect.WaitForBuildUpload(ctx, upload.Data.ID, 10*time.Second)
 ```
 
-Use a context deadline to bound uploads and processing waits. `.ipa` and `.pkg` UTIs are inferred; other supported asset types take an explicit UTI. Checksum objects are optional and can be provided through `UploadFile.Checksums`.
+通过 context 截止时间限制上传和处理等待时长。SDK 会根据 `.ipa`、`.pkg` 后缀推断 UTI，其他受支持的文件类型需要显式传入 UTI。校验和对象是可选项，可通过 `UploadFile.Checksums` 提供。
 
-`UploadBuildFile`, `CreateBuildUploadFile`, `UploadOperations`, `CommitBuildUploadFile` and status APIs are also available separately. Failed uploads are never automatically committed. `UploadError` retains upload/file IDs, and the high-level uploader returns an existing reservation on later failure. Upload URLs receive only Apple's operation headers, without the Connect API bearer token. The SDK does not automatically retry mutations.
+也可以分别调用 `UploadBuildFile`、`CreateBuildUploadFile`、`UploadOperations`、`CommitBuildUploadFile` 和状态查询接口。上传失败时不会自动提交文件；`UploadError` 保留上传和文件 ID，高层上传接口也会在后续步骤失败时返回已有上传记录。上传 URL 只接收 Apple 指定的操作请求头，不附加 Connect API 的 Bearer Token。SDK 不会自动重试写操作。
 
-### Filters and pagination
+### 筛选和分页
 
-GET methods accept `url.Values` for filters, sparse fields, included resources and limits:
+GET 方法接收 `url.Values`，用于配置筛选条件、返回字段、关联资源和条数限制：
 
 ```go
 apps, err := connect.ListApps(ctx, url.Values{
@@ -201,9 +201,9 @@ apps, err := connect.ListApps(ctx, url.Values{
 })
 ```
 
-Pass `response.Links.Next` to `Client.Do` for the next page. Additional JSON API operations can also use `Do`; authenticated requests stay on the configured API origin.
+将响应中的 `response.Links.Next` 传给 `Client.Do`，即可读取下一页。其他 JSON API 操作也可使用 `Do`；带鉴权的请求限定在客户端配置的 API 来源地址内。
 
-## Sign in with Apple
+## Sign in with Apple 登录
 
 ```go
 import "github.com/sunbeam27/app-store/signin"
@@ -213,15 +213,15 @@ tokens, err := login.ExchangeCodeContext(ctx, authorizationCode, redirectURI)
 claims, err := login.VerifyIDTokenWithNonceContext(ctx, idToken, expectedNonce)
 ```
 
-The package also supports refresh and revocation with context variants. Existing methods remain available for compatibility.
+登录包还提供支持 context 的令牌刷新和撤销接口，原有方法继续保留以兼容现有调用。
 
-## Models and errors
+## 模型和错误处理
 
-Optional scalar fields use pointers so missing values differ from zero and false. Typed enums preserve unknown string/numeric values, and models retain unknown JSON fields in `UnknownFields`. JSON:API `included` unions use `json.RawMessage`.
+可选标量字段使用指针，区分字段缺失与零值、`false`。枚举类型保留未知的字符串或数值，模型通过 `UnknownFields` 保存未知 JSON 字段。JSON:API 的 `included` 联合类型使用 `json.RawMessage` 表示。
 
-Use `errors.As` with `*appstoreserver.APIError` or `*appstoreconnect.APIError` to inspect HTTP status, response headers, retry timing and the original body. Server errors retain the raw Apple error code; Connect errors retain the JSON:API error array and source locations. Verification errors expose a `VerificationStatus` and distinguish retryable OCSP failures.
+使用 `errors.As` 提取 `*appstoreserver.APIError` 或 `*appstoreconnect.APIError`，即可查看 HTTP 状态、响应头、重试时间和原始响应体。服务端错误保留 Apple 原始错误码，Connect 错误保留 JSON:API 错误数组及字段位置。验签错误提供 `VerificationStatus`，可区分允许重试的 OCSP 故障。
 
-## Development and releases
+## 开发和发布
 
 ```sh
 go test -race ./...
@@ -229,6 +229,6 @@ go vet ./...
 go build ./...
 ```
 
-Model generation is reproducible from pinned upstream inputs; see [docs/compatibility.md](docs/compatibility.md). Tests include Apple JSON, signed-data, Xcode and receipt vectors, synthetic certificate/OCSP cases and a complete mock multipart upload.
+模型可从锁定的上游输入重复生成，操作步骤见 [docs/compatibility.md](docs/compatibility.md)。测试覆盖 Apple 官方 JSON、签名数据、Xcode 和 receipt 样本，动态生成的证书与 OCSP 场景，以及完整的模拟分片上传流程。
 
-Releases remain versioned Go modules and source archives. Updating `.github/release-version` on `main` requests a release after dependency, race, vet and build checks. Existing tags/releases are never overwritten.
+SDK 以带版本的 Go module 和源码归档发布。在 `main` 上更新 `.github/release-version` 即可申请发布；工作流会先检查依赖、race、vet 和构建结果，再创建版本。已有标签和 Release 不会被覆盖。
