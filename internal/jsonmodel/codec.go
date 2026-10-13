@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"strconv"
 	"strings"
 )
 
@@ -23,6 +24,19 @@ func NormalizeTimestamps(data []byte, keys []string) ([]byte, error) {
 		}
 		if len(raw) > 128 {
 			return nil, fmt.Errorf("timestamp %s is too large", key)
+		}
+		// Payloads reach this parser before signature verification. Reject
+		// enormous positive exponents and truncate underflows before Rat can
+		// construct large powers of ten. All nonzero values still use exact
+		// arithmetic, including timestamps above float64's integer precision.
+		approximate, err := strconv.ParseFloat(string(raw), 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid timestamp %s: %w", key, err)
+		}
+		if approximate == 0 {
+			fields[key] = json.RawMessage("0")
+			changed = true
+			continue
 		}
 		rational, ok := new(big.Rat).SetString(string(raw))
 		if !ok {
