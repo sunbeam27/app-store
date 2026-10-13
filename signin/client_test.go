@@ -1,4 +1,4 @@
-package app_store
+package signin
 
 import (
 	"crypto/ecdsa"
@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/sunbeam27/app-store/internal/applejwt"
 )
 
 func generateTestP8Key(t *testing.T) string {
@@ -69,7 +70,7 @@ func TestGenerateClientSecret(t *testing.T) {
 
 	// Parse and verify the secret JWT
 	parsed, err := jwt.Parse(secret, func(token *jwt.Token) (interface{}, error) {
-		key, _ := ParsePrivateKey(p8Key)
+		key, _ := applejwt.ParseKey(p8Key)
 		return &key.PublicKey, nil
 	})
 	if err != nil {

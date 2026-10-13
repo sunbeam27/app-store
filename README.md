@@ -1,379 +1,234 @@
 # app-store
 
-Go SDK for Apple App Store Server API and Sign in with Apple.
+An independently maintained Go SDK for Apple commerce and App Store Connect automation.
 
-## Features
+| Package | Responsibility |
+|---|---|
+| `appstoreserver` | Go counterpart to Apple App Store Server Library: 30 API operations, authenticated clients and signed-data verification |
+| `appstoreserver/model` | Server API, notifications, retention messaging and Advanced Commerce wire models and enums |
+| `appstoreserver/offers` | Legacy promotional offers, promotional offer V2 and introductory eligibility signatures |
+| `appstoreserver/advancedcommerce` | StoreKit Advanced Commerce in-app request signatures |
+| `appstoreserver/receipt` | Extract transaction IDs when migrating legacy receipts |
+| `appstoreconnect` | 52 typed operations for apps, builds, uploads, in-app purchases, subscriptions, localization, availability and pricing |
+| `appstoreconnect/model` | App Store Connect JSON:API request and response models |
+| `signin` | Sign in with Apple, including request-context variants |
 
-- **App Store Server API** - JWT token generation, order lookup, transaction info/history, subscription status, refund history, consumption information V2
-- **Sign in with Apple** - ID token verification, authorization code exchange, token refresh, token revocation
-- **App Store Server Notifications V2** - Parse and verify signed notifications
-- **Certificate Verification** - Apple root certificate chain validation
+Compatibility baselines: [Apple Java Library 5.2.0](https://github.com/apple/app-store-server-library-java/tree/v5.2.0) and [App Store Connect OpenAPI 4.5.1](https://developer.apple.com/documentation/appstoreconnectapi).
+See [compatibility and migration](docs/compatibility.md), [Connect API coverage](docs/connect-api.md), and [compiling examples](examples/sdk/examples.go).
 
 ## Installation
 
-```bash
-go get github.com/sunbeam27/app-store@v0.1.0
+Requires **Go 1.26 or later**. This minimum follows the current `golang.org/x/crypto` OCSP dependency.
+
+```sh
+go get github.com/sunbeam27/app-store@latest
 ```
 
-## Releases
+The new packages are part of the next release. The published `v0.1.0` provides the legacy root package; during development, install this branch:
 
-This SDK is distributed as a versioned Go module and source archives, without standalone binaries.
-To request a release, update `.github/release-version` on `main` to a new `v0.x.y` or `v1.x.y` version.
-The release workflow checks dependencies, runs race tests, vet and build, then creates the tag and GitHub Release at the tested commit.
-It also verifies the published module can be downloaded through the Go proxy.
-Existing releases and tags are never overwritten. The workflow can be rerun manually on `main`.
+```sh
+go get github.com/sunbeam27/app-store@codex/apple-sdk-and-connect
+```
+
+The original root API remains available. Its documentation is in [docs/legacy.md](docs/legacy.md).
 
 ## App Store Server API
 
-### Setup
+Configure the In-App Purchase signing key, key ID, issuer ID, bundle ID and environment:
 
 ```go
-import appstore "github.com/sunbeam27/app-store"
+import (
+    "github.com/sunbeam27/app-store/appstoreserver"
+    "github.com/sunbeam27/app-store/appstoreserver/model"
+)
 
-// Parse your private key (.p8 file)
-privateKey, err := appstore.ParsePrivateKey(privateKeyPEM)
-
-// Create token
-token := appstore.NewToken("YOUR_KEY_ID", "YOUR_ISSUER_ID", "com.your.bundle", privateKey)
-
-// Create client (production)
-client, err := appstore.NewClient(token)
-
-// Or create client for sandbox
-client, err := appstore.NewClient(token, appstore.WithSandbox())
-
-// With custom HTTP client
-client, err := appstore.NewClient(token, appstore.WithHttpClient(customHTTPClient))
-```
-
-### Lookup Order
-
-```go
-order, err := client.LookupOrder(ctx, "ORDER_ID")
+client, err := appstoreserver.NewAppStoreServerAPIClient(appstoreserver.ClientConfig{
+    SigningKey:  string(keyPEM),
+    KeyID:       keyID,
+    IssuerID:    issuerID,
+    BundleID:    "com.example.app",
+    Environment: model.EnvironmentSandbox,
+})
 if err != nil {
-    log.Fatal(err)
+    return err
 }
 
-// Decode signed transactions
-err = order.DecodeTransaction()
-for _, tx := range order.Transactions {
-    fmt.Println(tx.ProductId, tx.TransactionId)
-}
-```
-
-### Get Transaction Info
-
-```go
-tx, err := client.GetTransactionInfo(ctx, "TRANSACTION_ID")
+response, err := client.GetTransactionInfo(ctx, transactionID)
 if err != nil {
-    log.Fatal(err)
+    return err
 }
-fmt.Println(tx.ProductId, tx.PurchaseDate)
+// response.SignedTransactionInfo retains the original signed JWS.
 ```
 
-### Get Transaction History
+The client also supports order lookup, subscription status filtering, transaction and refund pagination, notifications, renewal-date extensions, consumption V1/V2, App Account Token updates, app transactions and finishing transactions. Retention messaging operations share the same client.
+
+API calls return Apple's wire responses. Verification is explicit and independent.
+
+### Verify transactions and notifications
+
+Download the trusted Apple roots from [Apple PKI](https://www.apple.com/certificateauthority/) and pass their DER or PEM contents:
 
 ```go
-resp, err := client.GetTransactionHistory(ctx, "ORIGINAL_TRANSACTION_ID", "")
+verifier, err := appstoreserver.NewSignedDataVerifier(appstoreserver.VerifierConfig{
+    RootCertificates: [][]byte{appleRootDER},
+    BundleID:         "com.example.app",
+    Environment:      model.EnvironmentSandbox,
+    OnlineChecks:     true,
+})
 if err != nil {
-    log.Fatal(err)
+    return err
 }
-
-// Paginate with revision
-for resp.HasMore {
-    resp, err = client.GetTransactionHistory(ctx, "ORIGINAL_TRANSACTION_ID", resp.Revision)
+if response.SignedTransactionInfo == nil {
+    return errors.New("missing signed transaction")
 }
+transaction, err := verifier.VerifyAndDecodeTransaction(ctx, *response.SignedTransactionInfo)
 ```
 
-### Get Subscription Status
+For production, also set `AppAppleID: model.Ptr(yourAppAppleID)`.
+The verifier checks the certificate chain, Apple signing-certificate extensions, JWS signature and application/environment identifiers applicable to each payload type.
+
+Methods cover transactions, renewal information, notifications, app transactions and retention realtime requests. Online checks verify OCSP status at the current time. Verified chains are cached for up to 15 minutes, bounded by certificate expiry. Offline checks validate certificates at the payload signing time, matching Apple's library. Xcode and LocalTesting are explicit testing environments and still enforce application/environment checks.
+
+For an HTTP notification body, decode its `signedPayload` string and pass it to `VerifyAndDecodeNotification`. The inner `signedTransactionInfo` and `signedRenewalInfo` are separate JWS values; verify each one before using it.
+
+### Transaction-history filters
 
 ```go
-status, err := client.GetAllSubscriptionStatuses(ctx, "ORIGINAL_TRANSACTION_ID")
-if err != nil {
-    log.Fatal(err)
-}
-
-for _, group := range status.Data {
-    for _, item := range group.LastTransactions {
-        fmt.Printf("Status: %d\n", item.Status)
-    }
-}
-```
-
-### Get Refund History
-
-```go
-refunds, err := client.GetRefundHistory(ctx, "ORIGINAL_TRANSACTION_ID", "")
-if err != nil {
-    log.Fatal(err)
-}
-
-// Paginate
-for refunds.HasMore {
-    refunds, err = client.GetRefundHistory(ctx, "ORIGINAL_TRANSACTION_ID", refunds.Revision)
-}
-```
-
-## Sign in with Apple
-
-### Setup
-
-```go
-authClient := appstore.NewAppleAuthClient(
-    "com.your.services.id",  // Services ID (or Bundle ID)
-    "YOUR_TEAM_ID",
-    "YOUR_KEY_ID",
-    privateKeyPEM,           // .p8 file content
+response, err := client.GetTransactionHistory(ctx, transactionID, revision,
+    &model.TransactionHistoryRequest{
+        ProductIDs: []string{"com.example.monthly"},
+        Revoked:    model.Ptr(false),
+        Sort:       model.Ptr(model.TransactionHistoryRequestOrderAscending),
+    },
+    appstoreserver.GetTransactionHistoryVersionV2,
 )
 ```
 
-### Exchange Authorization Code
+Keep the same filters when requesting the next revision. The omitted version defaults to V1, matching the Java overload; explicitly select V2 for current history.
+
+## App Store Connect
+
+Configure an App Store Connect integration key separately from the Server API client:
 
 ```go
-tokenResp, err := authClient.ExchangeCode("AUTH_CODE", "https://your-app.com/callback")
-if err != nil {
-    log.Fatal(err)
-}
-fmt.Println(tokenResp.AccessToken, tokenResp.IDToken)
-```
+import (
+    "github.com/sunbeam27/app-store/appstoreconnect"
+    connectmodel "github.com/sunbeam27/app-store/appstoreconnect/model"
+)
 
-### Verify ID Token
-
-Generate and retain a nonce for each authorization request, then pass the expected nonce when verifying its ID token. The nonce must match the value sent to Apple (including any hashing required by your platform). `VerifyIDToken` validates the signature and claims only; use `VerifyIDTokenWithNonce` to bind the token to the login request.
-
-```go
-claims, err := authClient.VerifyIDTokenWithNonce(idToken, expectedNonce)
-if err != nil {
-    log.Fatal(err)
-}
-fmt.Println(claims.Subject, claims.Email, claims.IsEmailVerified())
-```
-
-### Refresh Token
-
-```go
-tokenResp, err := authClient.RefreshAccessToken("REFRESH_TOKEN")
-```
-
-### Revoke Token
-
-```go
-err := authClient.RevokeToken("TOKEN", "access_token") // or "refresh_token"
-```
-
-## App Store Server Notifications V2
-
-### Parse Notification
-
-```go
-// From raw HTTP request body
-payload, err := appstore.ParseNotificationRequest(body)
-if err != nil {
-    log.Fatal(err)
-}
-
-fmt.Println(payload.NotificationType, payload.Subtype)
-
-// Decode transaction and renewal info
-if payload.Data != nil {
-    tx, err := payload.Data.DecodeTransactionInfo()
-    renewal, err := payload.Data.DecodeRenewalInfo()
-}
-```
-
-### Notification Types
-
-| Type | Description |
-|------|-------------|
-| `SUBSCRIBED` | New subscription |
-| `DID_RENEW` | Subscription renewed |
-| `DID_FAIL_TO_RENEW` | Renewal failed |
-| `DID_CHANGE_RENEWAL_STATUS` | Auto-renew preference changed |
-| `DID_CHANGE_RENEWAL_PREF` | Subscription plan changed |
-| `EXPIRED` | Subscription expired |
-| `GRACE_PERIOD_EXPIRED` | Grace period ended |
-| `OFFER_REDEEMED` | Promotional offer redeemed |
-| `REFUND` | Transaction refunded |
-| `REFUND_DECLINED` | Refund request declined |
-| `REFUND_REVERSED` | Refund reversed |
-| `REVOKE` | Family Sharing access revoked |
-| `CONSUMPTION_REQUEST` | Consumption info requested |
-| `ONE_TIME_CHARGE` | Consumable, non-consumable, or non-renewing subscription purchase |
-| `RENEWAL_EXTENDED` | Renewal date extended |
-| `PRICE_INCREASE` | Price increase notification |
-| `TEST` | Test notification |
-
-### Consumption Request Notification and Reply
-
-The notification's HTTP POST body is `{"signedPayload":"<Apple-signed JWS>"}`.
-After signature verification, a consumption notification has this shape
-(the JWS placeholders below are illustrative, not valid signed test tokens):
-
-```json
-{
-  "notificationType": "CONSUMPTION_REQUEST",
-  "notificationUUID": "notification-uuid",
-  "version": "2.0",
-  "signedDate": 1760000000000,
-  "data": {
-    "appAppleId": 1234567890,
-    "bundleId": "com.example.app",
-    "environment": "Production",
-    "consumptionRequestReason": "FULFILLMENT_ISSUE",
-    "signedTransactionInfo": "<Apple-signed transaction JWS>"
-  }
-}
-```
-
-Verify the outer notification and its signed transaction:
-
-```go
-notification, err := appstore.ParseNotificationRequest(body)
-if err != nil {
-    return err
-}
-tx, err := notification.ConsumptionRequestTransaction()
-if err != nil {
-    return err
-}
-// tx.TransactionId identifies the purchase to report.
-// notification.Data.ConsumptionRequestReason contains the refund reason.
-```
-
-Check the verified `bundleId` and environment against your app configuration,
-and `appAppleId` in production (Apple omits it in sandbox notifications).
-For multiple subjects, choose the client from your trusted
-app/subject configuration, using the matching production or sandbox credentials.
-The transaction helper checks that the inner and outer bundle/environment agree;
-it does not select or authenticate your business tenant.
-
-Obtain the customer's consent for sharing consumption data and load actual
-usage from your application. Do not submit consumption data without that consent.
-Submit within 12 hours of receiving the notification:
-
-```go
-// Example: a delivered consumable, with 25% consumed.
-// customerConsented and consumedPercentage must come from your own records.
-consumedPercentage := int32(25000)
-request := appstore.ConsumptionRequest{
-    CustomerConsented:     customerConsented,
-    ConsumptionPercentage: &consumedPercentage,
-    DeliveryStatus:        appstore.DeliveryStatusDelivered,
-    SampleContentProvided: false,
-    // Omit RefundPreference to express no preference.
-}
-err = client.SendConsumptionInformation(ctx, tx.TransactionId, request)
+connect, err := appstoreconnect.NewClient(appstoreconnect.Config{
+    SigningKey: string(connectKeyPEM),
+    KeyID:      connectKeyID,
+    IssuerID:   connectIssuerID,
+})
 if err != nil {
     return err
 }
 ```
 
-The method sends:
+Individual keys use `IndividualKey: true` with an omitted issuer ID. Both clients support custom HTTP clients and external token providers.
 
-```http
-PUT /inApps/v2/transactions/consumption/{transactionId}
-Authorization: Bearer <App Store Server API JWT>
-Content-Type: application/json
-
-{
-  "customerConsented": true,
-  "consumptionPercentage": 25000,
-  "deliveryStatus": "DELIVERED",
-  "sampleContentProvided": false
-}
-```
-
-Production host: `https://api.storekit.apple.com`.
-Sandbox host: `https://api.storekit-sandbox.apple.com`.
-
-Apple returns **202 Accepted** when it receives the data. The method returns
-`nil`; there is no refund-decision response object. The eventual decision arrives
-in a `REFUND` or `REFUND_DECLINED` notification.
-
-Separately, respond to Apple's notification POST with **200 OK** after durable
-acceptance. Store a consumption job first, then let a worker submit the data;
-return an error response if durable acceptance fails. Deduplicate using
-`notificationUUID`, and retry transient API failures within the 12-hour window.
-Do not send consumption JSON as the HTTP response to the notification POST.
-
-Consumption V2 uses string delivery/refund values, not V1's numeric fields:
-
-- `consumptionPercentage` ranges from 0 to 100000 (100%). A pointer to zero
-  sends `0`; `nil` omits the field.
-- For undelivered content, use an appropriate `UNDELIVERED_*` status and zero
-  consumption.
-- For auto-renewable subscriptions, omit consumption percentage; Apple
-  calculates it. Other product types require a value strictly between 0 and
-  100000 when requesting `GRANT_PRORATED`.
-- Refund preferences are `DECLINE`, `GRANT_FULL`, and `GRANT_PRORATED`.
-  Apple makes the final decision.
-
-References: [Send Consumption Information](https://developer.apple.com/documentation/appstoreserverapi/send-consumption-information),
-[ConsumptionRequest](https://developer.apple.com/documentation/appstoreserverapi/consumptionrequest).
-
-### One-Time Purchase Notification
-
-`ONE_TIME_CHARGE` reports purchases of consumables, non-consumables, and
-non-renewing subscriptions. It is available in production and sandbox.
-Auto-renewable subscriptions continue to use `SUBSCRIBED` and `DID_RENEW`.
-
-After outer signature verification, the notification contains:
-
-```json
-{
-  "notificationType": "ONE_TIME_CHARGE",
-  "notificationUUID": "notification-uuid",
-  "version": "2.0",
-  "signedDate": 1760000000000,
-  "data": {
-    "appAppleId": 1234567890,
-    "bundleId": "com.example.app",
-    "environment": "Production",
-    "signedTransactionInfo": "<Apple-signed transaction JWS>"
-  }
-}
-```
+### Create an in-app purchase
 
 ```go
-notification, err := appstore.ParseNotificationRequest(body)
+request := appstoreconnect.NewInAppPurchaseRequest(
+    appID, "100 Coins", "com.example.coins100", connectmodel.InAppPurchaseTypeConsumable,
+)
+product, err := connect.CreateInAppPurchase(ctx, request)
+```
+
+This creates the product record. Configure localization, availability and pricing with the corresponding APIs. Submission for review is a separate operation.
+
+### Create an auto-renewable subscription
+
+```go
+group, err := connect.CreateSubscriptionGroup(ctx,
+    appstoreconnect.NewSubscriptionGroupRequest(appID, "Premium"))
 if err != nil {
     return err
 }
-tx, err := notification.OneTimeChargeTransaction()
+request := appstoreconnect.NewSubscriptionRequest(
+    group.Data.ID, "Premium Monthly", "com.example.premium.monthly",
+)
+request.Data.Attributes.SubscriptionPeriod = connectmodel.Ptr("ONE_MONTH")
+subscription, err := connect.CreateSubscription(ctx, request)
+```
+
+Auto-renewable subscriptions belong to a subscription group. They have separate APIs from one-time in-app purchases.
+
+### Upload an IPA or PKG
+
+The SDK uses Apple's [Build Uploads API](https://developer.apple.com/documentation/appstoreconnectapi/post-v1-builduploads): create the upload, reserve each file, stream the specified byte ranges, and commit each file.
+
+```go
+file, err := os.Open("MyApp.ipa")
 if err != nil {
     return err
 }
-// Validate the app/environment, associate tx.AppAccountToken with your user,
-// and atomically record tx.TransactionId plus the content grant.
-// Handle repeated notifications and device-originated transactions idempotently.
-// Inspect tx.Type, tx.ProductId, tx.Quantity, and tx.InAppOwnerShipType.
+defer file.Close()
+info, err := file.Stat()
+if err != nil {
+    return err
+}
+
+upload, err := connect.UploadBuild(ctx,
+    appstoreconnect.NewBuildUploadRequest(appID, "1.0", "42", connectmodel.PlatformIos),
+    []appstoreconnect.UploadFile{{
+        Name:    info.Name(),
+        Size:    info.Size(),
+        Content: file,
+    }},
+)
+if err != nil {
+    return err
+}
+// File commitment starts asynchronous processing.
+processed, err := connect.WaitForBuildUpload(ctx, upload.Data.ID, 10*time.Second)
 ```
 
-Use `transactionId` to deduplicate delivery across device purchase processing
-and notifications. A notification is not an instruction to grant the same
-purchase again. If `appAccountToken` is absent, use an existing verified purchase
-association; do not guess the user.
+Use a context deadline to bound uploads and processing waits. `.ipa` and `.pkg` UTIs are inferred; other supported asset types take an explicit UTI. Checksum objects are optional and can be provided through `UploadFile.Checksums`.
 
-A compiling HTTP receiver with app/environment checks and business callbacks
-is provided in [examples/notifications/handler.go](examples/notifications/handler.go).
-Connect its callbacks to durable storage and your consumption worker.
+`UploadBuildFile`, `CreateBuildUploadFile`, `UploadOperations`, `CommitBuildUploadFile` and status APIs are also available separately. Failed uploads are never automatically committed. `UploadError` retains upload/file IDs, and the high-level uploader returns an existing reservation on later failure. Upload URLs receive only Apple's operation headers, without the Connect API bearer token. The SDK does not automatically retry mutations.
 
-Reference: [notificationType](https://developer.apple.com/documentation/appstoreservernotifications/notificationtype).
+### Filters and pagination
 
-## Error Handling
+GET methods accept `url.Values` for filters, sparse fields, included resources and limits:
 
 ```go
-order, err := client.LookupOrder(ctx, "ORDER_ID")
-if err != nil {
-    if e := appstore.UnwrapError(err); e != nil {
-        fmt.Printf("Apple error: code=%d message=%s\n", e.ErrorCode, e.ErrorMessage)
-    }
-}
+apps, err := connect.ListApps(ctx, url.Values{
+    "filter[bundleId]": {"com.example.app"},
+    "limit":           {"50"},
+})
 ```
 
-## References
+Pass `response.Links.Next` to `Client.Do` for the next page. Additional JSON API operations can also use `Do`; authenticated requests stay on the configured API origin.
 
-- [App Store Server API](https://developer.apple.com/documentation/appstoreserverapi)
-- [Sign in with Apple](https://developer.apple.com/documentation/sign_in_with_apple)
-- [App Store Server Notifications V2](https://developer.apple.com/documentation/appstoreservernotifications)
+## Sign in with Apple
 
+```go
+import "github.com/sunbeam27/app-store/signin"
+
+login := signin.NewAppleAuthClient(clientID, teamID, keyID, string(signInKeyPEM))
+tokens, err := login.ExchangeCodeContext(ctx, authorizationCode, redirectURI)
+claims, err := login.VerifyIDTokenWithNonceContext(ctx, idToken, expectedNonce)
+```
+
+The package also supports refresh and revocation with context variants. Existing methods remain available for compatibility.
+
+## Models and errors
+
+Optional scalar fields use pointers so missing values differ from zero and false. Typed enums preserve unknown string/numeric values, and models retain unknown JSON fields in `UnknownFields`. JSON:API `included` unions use `json.RawMessage`.
+
+Use `errors.As` with `*appstoreserver.APIError` or `*appstoreconnect.APIError` to inspect HTTP status, response headers, retry timing and the original body. Server errors retain the raw Apple error code; Connect errors retain the JSON:API error array and source locations. Verification errors expose a `VerificationStatus` and distinguish retryable OCSP failures.
+
+## Development and releases
+
+```sh
+go test -race ./...
+go vet ./...
+go build ./...
+```
+
+Model generation is reproducible from pinned upstream inputs; see [docs/compatibility.md](docs/compatibility.md). Tests include Apple JSON, signed-data, Xcode and receipt vectors, synthetic certificate/OCSP cases and a complete mock multipart upload.
+
+Releases remain versioned Go modules and source archives. Updating `.github/release-version` on `main` requests a release after dependency, race, vet and build checks. Existing tags/releases are never overwritten.

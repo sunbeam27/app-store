@@ -19,3 +19,7 @@
 
 # Go workspace file
 go.work
+
+# Python SDK generators
+__pycache__/
+*.pyc
